@@ -34,9 +34,3 @@ Main Memory:
   1GB capacity
   64 byte line
   100 cycle latency
-
-30 bits in address
-6 bits for offset
-6 bits for set
-18 bits for tag
-111111111111111111 111111 111111
