@@ -16,9 +16,12 @@ Cache Specifications:
     Memory size = 1GiB = 2^30
     Block size = 16 Bytes = 2^6
 
-    Number of sets in cache = Cache size/(Set size * Block size) = 32KB/(8 blocks * 64B) = 2^6
-
-    Number of bits in Tag = Total bits - Index bits - Offset bits = 30-6-6 = 18
+    Number of lines in cache = cache size / line size (32KB / 64B = 500)
+    Number of sets in cache = ceil(number of lines / associativity) (500 / 8 = 63)
+    Number of bits required to address set = ceil(log2 number of sets) (log_2 63 = 6)
+    Number of offsets in line = line size / word size (64B / 32b = 16)
+    Number of bits required to address offset = ceil(log2 number of offsets) (log2 16 = 4)
+    Number of bits required for tag = word size - (bits in offset + bits in address) (32 - (6 + 4) = 22)
 
   L2:
     256KB capacity
