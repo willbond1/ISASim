@@ -13,9 +13,6 @@ Cache Specifications:
     64 byte line
     4 cycle latency
 
-    Memory size = 1GiB = 2^30
-    Block size = 16 Bytes = 2^6
-
     Number of lines in cache = cache size / line size (32KB / 64B = 500)
     Number of sets in cache = ceil(number of lines / associativity) (500 / 8 = 63)
     Number of bits required to address set = ceil(log2 number of sets) (log2 63 = 6)
