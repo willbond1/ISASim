@@ -16,6 +16,13 @@ Memory::Memory(short l_latency, short l_ways, long l_size, int l_line_length, in
 	}
 }
 
+short Memory::query_timer(long addr) {
+	if (!timers.count(addr)) { // address has never been accessed
+		timers[addr] = 0;
+	}
+	return timers[addr];
+}
+
 int Memory::read(int index, int tag, int offset) {
 	int word = sets[index].read(tag, offset);
 	if (word != -1) return word;

@@ -65,6 +65,9 @@ private:
 public:
 	Memory(short l_latency, short l_ways, long l_size, int l_line_length, int l_word_size);
 	void attach_memory(Memory* l_mem) { next_level = l_mem; }
+	void increment_timer(long addr) { timers[addr]++; }
+	void reset_timer(long addr) { timers[addr] = 0; }
+	short get_latency() { return latency; }
 
 	int read(int index, int tag, int offset);
 	void write(uint32_t word, int index, int tag, int offset);
@@ -73,5 +76,6 @@ public:
 	int decode_offset(long addr);
 	int decode_index(long addr);
 	int decode_tag(long addr);
+	short query_timer(long addr);
 	void print();
 };
