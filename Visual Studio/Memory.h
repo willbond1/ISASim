@@ -26,8 +26,8 @@ private:
 		void set_tag(uint32_t l_tag) { tag = l_tag; }
 		uint32_t read(uint32_t offset) { return mem_array[offset]; }
 		std::vector<uint32_t> read() { return mem_array; }
-		void write(uint32_t word, uint32_t offset) { mem_array[offset] = word; }
-		void write(std::vector<uint32_t> words) { mem_array = words; }
+		void write(uint32_t word, uint32_t offset) { mem_array[offset] = word; empty = false; }
+		void write(std::vector<uint32_t> words) { mem_array = words; empty = false; }
 		bool is_hit(uint32_t l_tag) { return (l_tag == tag); }
 
 		std::vector<uint32_t> evict(); // reads out entire line, then erases memory

@@ -74,7 +74,7 @@ void Memory::write(uint32_t word, uint32_t addr) {
 	uint32_t index = decode_index(addr);
 	uint32_t tag = decode_tag(addr);
 	uint32_t offset = decode_offset(addr);
-
+	std::cout << "LOOK HERE " << is_hit(index, tag) << std::endl;
 	if (is_hit(index, tag) || next_level == 0) {
 		sets[index].write(word, tag, offset);
 	} else {
@@ -87,6 +87,7 @@ void Memory::write(uint32_t word, uint32_t addr) {
 		std::vector<uint32_t> new_block = next_level->read_block(addr);
 		lru->write(new_block);
 		lru->write(word, offset);
+		std::cout << lru->read(offset);
 		lru->set_dirty(true);
 	}
 }
