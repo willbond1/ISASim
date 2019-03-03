@@ -13,6 +13,6 @@ public:
 	int get_word_size() { return word_size; }
 	void attach_memory(Memory *l_mem) { mem = l_mem; }
 
-	uint32_t read(long addr);
-	void write(uint32_t word, long addr);
+	uint32_t read(uint32_t addr);
+	void write(uint32_t word, uint32_t addr);
 };

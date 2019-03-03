@@ -8,6 +8,7 @@ class Memory {
 private:
 	class Line {
 	private:
+		bool empty = true;
 		bool dirty = false;
 		int age = 0;
 		uint32_t tag = 0; // 0 = unset
@@ -17,18 +18,20 @@ private:
 		Line(int words): mem_array(std::vector<uint32_t>(words, 0)) {};
 		void set_dirty(bool new_dirty) { dirty = new_dirty; }
 		bool is_dirty() { return dirty; }
+		bool is_empty() { return empty; }
 		int get_age() { return age; }
 		void age_incr() { age++; }
 		void age_reset() { age = 0; }
 		uint32_t get_tag() { return tag; }
 		void set_tag(uint32_t l_tag) { tag = l_tag; }
-		std::vector<uint32_t> retrieve_block() { return mem_array; }
+		std::vector<uint32_t> read_block() { return mem_array; }
 
-		int read(int l_tag, int offset); // returns word if hit, -1 if not
-		bool write(uint32_t word, int l_tag, int offset); // returns true if hit, false if miss
-		bool write(std::vector<uint32_t> block, int l_tag, int offset); // same as above but works with whole line
-		std::vector<uint32_t>* read_block(int l_tag, int offset);
+		int read(uint32_t l_tag, uint32_t offset); // returns word if hit, -1 if not
+		bool write(uint32_t word, uint32_t l_tag, uint32_t offset); // returns true if hit, false if miss
+		bool write(std::vector<uint32_t> block, uint32_t l_tag, uint32_t offset); // same as above but works with whole line
+		std::vector<uint32_t>* read_block(uint32_t l_tag, uint32_t offset);
 		std::vector<uint32_t> evict(); // reads out entire line, then erases memory
+		void display();
 	};
 
 	class Set {
@@ -38,16 +41,17 @@ private:
 	public:
 		Set(short ways, int words): lines(std::vector<Line>(ways, Line(words))) {};
 
-		int read(int tag, int offset);
-		bool write(uint32_t word, int tag, int offset);
-		bool write(std::vector<uint32_t> block, int tag, int offset);
-		std::vector<uint32_t>* read_block(int tag, int offset);
+		int read(uint32_t tag, uint32_t offset);
+		bool write(uint32_t word, uint32_t tag, uint32_t offset);
+		bool write(std::vector<uint32_t> block, uint32_t tag, uint32_t offset);
+		std::vector<uint32_t>* read_block(uint32_t tag, uint32_t offset);
 		Line* find_LRU();
+		void display();
 	};
 
 	Memory* next_level = 0;
 	short latency;
-	std::map<long, short> timers; // each address access has its own timer to track latency
+	std::map<uint32_t, short> timers; // each address access has its own timer to track latency
 	long size; // memory size in bytes
 	int line_length; // line size in bytes
 	short ways; // associativity
@@ -65,17 +69,18 @@ private:
 public:
 	Memory(short l_latency, short l_ways, long l_size, int l_line_length, int l_word_size);
 	void attach_memory(Memory* l_mem) { next_level = l_mem; }
-	void increment_timer(long addr) { timers[addr]++; }
-	void reset_timer(long addr) { timers[addr] = 0; }
+	void increment_timer(uint32_t addr) { timers[addr]++; }
+	void reset_timer(uint32_t addr) { timers[addr] = 0; }
 	short get_latency() { return latency; }
 
-	int read(int index, int tag, int offset);
-	void write(uint32_t word, int index, int tag, int offset);
-	void write(std::vector<uint32_t> block, int index, int tag, int offset);
-	std::vector<uint32_t>* read_block(int index, int tag, int offset);
-	int decode_offset(long addr);
-	int decode_index(long addr);
-	int decode_tag(long addr);
-	short query_timer(long addr);
+	uint32_t read(uint32_t index, uint32_t tag, uint32_t offset);
+	void write(uint32_t word, uint32_t index, uint32_t tag, uint32_t offset);
+	void write(std::vector<uint32_t> block, uint32_t index, uint32_t tag, uint32_t offset);
+	std::vector<uint32_t>* read_block(uint32_t index, uint32_t tag, uint32_t offset);
+	uint32_t decode_offset(uint32_t addr);
+	uint32_t decode_index(uint32_t addr);
+	uint32_t decode_tag(uint32_t addr);
+	short query_timer(uint32_t addr);
 	void print();
+	void display(); // prints the contents of memory to screen
 };
