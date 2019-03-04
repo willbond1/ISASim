@@ -24,6 +24,7 @@ private:
 		void set_empty(bool l_empty) { empty = l_empty; }
 		uint32_t get_age() { return age; }
 		void age_incr() { age++; }
+		void age_decr() { age--; }
 		void age_reset() { age = 0; }
 		uint32_t get_tag() { return tag; }
 		void set_tag(uint32_t l_tag) { tag = l_tag; }
@@ -56,6 +57,7 @@ private:
 		void write(std::vector<uint32_t>& block, uint32_t tag);
 		//void write(std::vector<uint32_t> block, uint32_t tag);
 		Line* is_hit(uint32_t tag);
+		void lru_incr(Line * recent_line);
 		Line* find_LRU();
 		void display();
 	};

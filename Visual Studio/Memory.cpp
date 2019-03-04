@@ -34,6 +34,7 @@ uint32_t Memory::read(uint32_t addr) {
 	uint32_t offset = decode_offset(addr);
 	Line *hitline = is_hit(index, tag);
 	if (hitline) {
+		sets[index].lru_incr(hitline);
 		return hitline->read(offset);
 	} else {
 		Line* lru = sets[index].find_LRU();
@@ -52,6 +53,7 @@ uint32_t Memory::read(uint32_t addr) {
 		lru->set_tag(tag);
 		lru->set_dirty(false);
 		lru->set_empty(false);
+		sets[index].lru_incr(lru);
 		return new_block[offset];
 	}
 }
@@ -62,6 +64,7 @@ std::vector<uint32_t> Memory::read_block(uint32_t addr) {
 	uint32_t offset = decode_offset(addr);
 	Line *hitline = is_hit(index, tag);
 	if (hitline) {
+		sets[index].lru_incr(hitline);
 		return hitline->read();
 	} else {
 		Line* lru = sets[index].find_LRU();
@@ -80,6 +83,7 @@ std::vector<uint32_t> Memory::read_block(uint32_t addr) {
 		lru->set_tag(tag);
 		lru->set_dirty(false);
 		lru->set_empty(false);
+		sets[index].lru_incr(lru);
 		return new_block;
 	}
 }
@@ -93,6 +97,7 @@ void Memory::write(uint32_t word, uint32_t addr) {
 	Line *hitline = is_hit(index, tag);
 	if (hitline) {
 		hitline->write(word, offset);
+		sets[index].lru_incr(hitline);
 	} else {
 		Line* lru = sets[index].find_LRU();
 		if (lru->is_dirty()) {
@@ -110,6 +115,7 @@ void Memory::write(uint32_t word, uint32_t addr) {
 		lru->write(word, offset);
 		lru->set_tag(tag);
 		lru->set_dirty(true);
+		sets[index].lru_incr(lru);
 	}
 }
 
@@ -120,6 +126,7 @@ void Memory::write(std::vector<uint32_t> &block, uint32_t addr) {
 	Line *hitline = is_hit(index, tag);
 	if (hitline) {
 		hitline->write(block);
+		sets[index].lru_incr(hitline);
 	} else {
 		Line* lru = sets[index].find_LRU();
 		if (lru->is_dirty()) {
@@ -135,7 +142,9 @@ void Memory::write(std::vector<uint32_t> &block, uint32_t addr) {
 		lru->write(block);
 		lru->set_tag(tag);
 		lru->set_dirty(true);
+		sets[index].lru_incr(lru);
 	}
+	
 }
 
 uint32_t Memory::encode_addr(uint32_t tag, uint32_t index, uint32_t offset) {
@@ -212,6 +221,16 @@ Memory::Line* Memory::Set::is_hit(uint32_t tag) {
 	return false;
 }
 
+void Memory::Set::lru_incr(Line *recent_line)
+{
+	Line* cur = 0;
+	for (uint32_t i = 0; i < lines.size(); i++) {
+		cur = &(lines[i]);
+		if (cur != recent_line)
+			cur->age_incr();
+	}
+}
+
 void Memory::Set::write(uint32_t word, uint32_t tag, uint32_t offset) {
 	for (Line line : lines) {
 		if (line.is_hit(tag) && !line.is_empty()) {
@@ -286,6 +305,7 @@ void Memory::Set::display() {
 std::vector<uint32_t> Memory::Line::evict() {
 	std::vector<uint32_t> temp = std::vector<uint32_t>(std::vector<uint32_t>(mem_array));
 	empty = true;
+	age_reset();
 	return temp;
 }
 
