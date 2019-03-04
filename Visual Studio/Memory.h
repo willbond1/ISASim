@@ -6,6 +6,8 @@
 
 class Memory {
 private:
+	friend class Interface;
+
 	class Line {
 	private:
 		bool empty;

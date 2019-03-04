@@ -4,7 +4,6 @@
 class Interface
 {
 private:
-	friend class CPU;
 	CPU* f_cpu;
 
 public:

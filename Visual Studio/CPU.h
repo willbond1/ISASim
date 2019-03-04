@@ -1,9 +1,11 @@
 #pragma once
 #include <vector>
 #include "Memory.h"
+#include "Interface.h"
 
 class CPU {
 private:
+	friend class Interface;
 	int clock = 0;
 	int word_size;
 	Memory *mem = 0;

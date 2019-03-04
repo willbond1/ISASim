@@ -87,7 +87,6 @@ void Memory::write(uint32_t word, uint32_t addr) {
 		std::vector<uint32_t> new_block = next_level->read_block(addr);
 		lru->write(new_block);
 		lru->write(word, offset);
-		std::cout << lru->read(offset);
 		lru->set_dirty(true);
 	}
 }
