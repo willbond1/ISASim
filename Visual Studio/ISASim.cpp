@@ -8,8 +8,8 @@ int main() {
 
 	CPU my_CPU(32);
 	Interface interf(&my_CPU);
-	Memory RAM(1, 1, 32 * 1000, 64, 32, true);
-	Memory L1(5, 8, 8 * 1000, 64, 32, false);
+	Memory RAM(1, 1, 1024, 8, 32, true);
+	Memory L1(5, 2, 64, 8, 32, false);
 	L1.attach_memory(&RAM);
 	my_CPU.attach_memory(&L1);
 

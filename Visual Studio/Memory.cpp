@@ -6,7 +6,7 @@ Memory::Memory(uint32_t l_latency, uint32_t l_ways, uint32_t l_size, uint32_t l_
 	latency(l_latency), ways(l_ways), size(l_size), line_length(l_line_length), word_size(l_word_size) {
 
 	line_n = size / line_length;
-	set_n = ceil(line_n / ways);
+	set_n = ceil((float)line_n / (float)ways);
 	index_n = ceil(log2((float)set_n));
 	word_n = (line_length * 8) / word_size;
 	offset_n = ceil(log2((float)word_n));
@@ -18,7 +18,7 @@ Memory::Memory(uint32_t l_latency, uint32_t l_ways, uint32_t l_size, uint32_t l_
 }
 
 uint32_t Memory::query_timer(uint32_t addr) {
-	if (!timers.count(addr)) { // address has never been accessed
+	if (timers.count(addr) == 0) { // address has never been accessed
 		timers[addr] = 0;
 	}
 	return timers[addr];
@@ -44,6 +44,7 @@ uint32_t Memory::read(uint32_t addr) {
 
 		std::vector<uint32_t> new_block = next_level->read_block(addr);
 		lru->write(new_block);
+		lru->set_tag(tag);
 		lru->set_dirty(false);
 		return new_block[offset];
 	}
@@ -65,6 +66,7 @@ std::vector<uint32_t> Memory::read_block(uint32_t addr) {
 
 		std::vector<uint32_t> new_block = next_level->read_block(addr);
 		lru->write(new_block);
+		lru->set_tag(tag);
 		lru->set_dirty(false);
 		return new_block;
 	}
@@ -87,6 +89,7 @@ void Memory::write(uint32_t word, uint32_t addr) {
 		std::vector<uint32_t> new_block = next_level->read_block(addr);
 		lru->write(new_block);
 		lru->write(word, offset);
+		lru->set_tag(tag);
 		lru->set_dirty(true);
 	}
 }
@@ -106,6 +109,7 @@ void Memory::write(std::vector<uint32_t> block, uint32_t addr) {
 		}
 
 		lru->write(block);
+		lru->set_tag(tag);
 		lru->set_dirty(true);
 	}
 }

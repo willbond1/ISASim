@@ -30,7 +30,7 @@ private:
 		std::vector<uint32_t> read() { return mem_array; }
 		void write(uint32_t word, uint32_t offset) { mem_array[offset] = word; empty = false; }
 		void write(std::vector<uint32_t> words) { mem_array = words; empty = false; }
-		bool is_hit(uint32_t l_tag) { return (l_tag == tag); }
+		bool is_hit(uint32_t l_tag) { return ((l_tag == tag) && !empty); }
 
 		std::vector<uint32_t> evict(); // reads out entire line, then erases memory
 		void display();
