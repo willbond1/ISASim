@@ -8,11 +8,15 @@ int main() {
 
 	CPU my_CPU(32);
 	Interface interf(&my_CPU);
-	Memory RAM(1, 1, 1024, 8, 32, true);
-	Memory L1(5, 2, 64, 8, 32, false);
+	Memory RAM(10, 1, 320, 8, 32, true);
+	Memory L1(5, 2, 16, 8, 32, false);
 	L1.attach_memory(&RAM);
 	my_CPU.attach_memory(&L1);
-
+	std::cout << "RAM INFO:" << std::endl;
+	RAM.print();
+	std::cout << "L1 INFO:" << std::endl;
+	L1.print();
+	std::cout << "----------------------------------" << std::endl;
 	interf.help();
 	while (true) {
 		interf.poll();

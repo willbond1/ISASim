@@ -8,7 +8,6 @@ uint32_t CPU::read(uint32_t addr) {
 
 	clock++;
 	if (mem->query_timer(addr) == mem->get_latency()) {
-		mem->reset_timer(addr);
 		return mem->read(addr);
 	}
 
@@ -18,15 +17,14 @@ uint32_t CPU::read(uint32_t addr) {
 }
 
 void CPU::write(uint32_t word, uint32_t addr) {
-	if (addr % 8 != 0) { // address is not byte aligned
-		std::cout << "Error: address is not byte aligned" << std::endl;
-		return;
-	}
+	//if (addr % 8 != 0) { // address is not byte aligned
+	//	std::cout << "Error: address is not byte aligned" << std::endl;
+	//	return;
+	//}
 
 	clock++;
 	if (mem->query_timer(addr) == mem->get_latency()) {
 		mem->write(word, addr);
-		mem->reset_timer(addr);
 		std::cout << "Write successful" << std::endl;
 	} else {
 		mem->increment_timer(addr);
