@@ -42,7 +42,13 @@ private:
 		std::vector<Line> lines;
 
 	public:
-		Set(uint32_t ways, uint32_t words, bool is_RAM): lines(std::vector<Line>(ways, Line(words, is_RAM))) {};
+		Set(uint32_t ways, uint32_t words, bool is_RAM): lines(std::vector<Line>(ways, Line(words, is_RAM))) {
+			if(is_RAM)
+				for (std::vector<Line>::size_type i = 0; i < lines.size(); i++) {
+					lines[i].set_tag(i);
+					std::cout << "LINE: " << i << " " << lines[i].get_tag() << std::endl;
+				}
+		};
 
 		uint32_t read(uint32_t tag, uint32_t offset);
 		std::vector<uint32_t> read(uint32_t tag);

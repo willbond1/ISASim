@@ -1,10 +1,10 @@
 #include "pch.h"
 
 uint32_t CPU::read(uint32_t addr) {
-	if (addr % 8 != 0) { // address is not byte aligned
-		std::cout << "Error: address is not byte aligned" << std::endl;
-		return 0;
-	}
+	//if (addr % 8 != 0) { // address is not byte aligned
+	//	std::cout << "Error: address is not byte aligned" << std::endl;
+	//	return 0;
+	//}
 
 	clock++;
 	if (mem->query_timer(addr) == mem->get_latency()) {
