@@ -13,5 +13,10 @@
 #include "Interface.h"
 #include "Memory.h"
 #include "CPU.h"
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+extern int clock;
 
 #endif //PCH_H

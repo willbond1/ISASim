@@ -4,7 +4,6 @@
 class Interface
 {
 private:
-	friend class CPU;
 	CPU* f_cpu;
 
 public:
@@ -12,5 +11,7 @@ public:
 
 	void help();
 	void poll();
+	void switch_cmd(char cmd, std::stringstream& file);
+	void switch_mod(char mod, char cmd, uint32_t addr, uint32_t word, std::stringstream& file);
 };
 
