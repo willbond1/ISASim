@@ -29,17 +29,18 @@ private:
 		uint8_t instruction_code;
 		uint8_t opcode;
 		uint8_t rd_number;
-		uint8_t op1_number;
-		uint8_t op2_number;
-		uint8_t off_number;
-		uint8_t off_shift_number;
+		uint8_t rn_number;
+		uint8_t rm_number;
+		uint8_t rs_number;
 		uint8_t off_shift_type;
 		bool write_back;
-		bool post_index;
+		bool pre_index;
 		bool add_sub_offset;
-		bool load_write;
 		bool offset_register;
-		bool offset_shift_register
+		bool offset_shift_register;
+		bool update_status;
+		bool link;
+		bool decoded = false;
 	};
 
 	class Pipeline
@@ -57,12 +58,13 @@ private:
 		~Pipeline();
 		void pipelineController();
 		void flushPipeline();
-		void decode();
+		bool decode();
 		void decode_ALU();
 		void decode_Memory();
 		void decode_Control();
 		void no_op();
 		bool condition_valid(uint8_t code);
+		uint32_t barrel_shifter(uint32_t value, uint32_t shift_amount, uint8_t shift_type);
 	};
 
 	
