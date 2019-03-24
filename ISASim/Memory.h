@@ -62,6 +62,7 @@ private:
 		void display();
 	};
 
+	CPU* cpu = 0;
 	Memory* next_level = 0;
 	uint32_t latency;
 	std::map<uint32_t, uint32_t> timers; // each address access has its own timer to track latency
@@ -83,7 +84,8 @@ private:
 
 public:
 	Memory(uint32_t l_latency, uint32_t l_ways, uint32_t l_size, uint32_t l_line_length, uint32_t l_word_size, bool is_RAM);
-	void attach_memory(Memory* l_mem) { next_level = l_mem; }
+	void attach_cpu(CPU* l_cpu) { cpu = l_cpu; }
+	void attach_memory(Memory* l_mem) { next_level = l_mem; next_level->attach_cpu(cpu); }
 	void increment_timer(uint32_t addr) { timers[addr]++; }
 	void reset_timer(uint32_t addr) { timers[addr] = 0; }
 	uint32_t get_latency() { return latency; }

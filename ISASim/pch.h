@@ -17,6 +17,5 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-extern int clock;
 
 #endif //PCH_H

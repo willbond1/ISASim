@@ -13,6 +13,7 @@ class CPU {
 private:
 	friend class Interface;
 	friend class Pipeline;
+	friend class Memory;
 	int word_size;
 	Memory *mem = 0;
 	Register registers[16];
@@ -20,7 +21,7 @@ private:
 	bool Z_flag = false;
 	bool C_flag = false;
 	bool V_flag = false;
-
+	int clock = 0;
 
 	struct Instruction
 	{
@@ -67,13 +68,14 @@ private:
 		uint32_t barrel_shifter(uint32_t value, uint32_t shift_amount, uint8_t shift_type);
 	};
 
-	
-
 
 public:
 	CPU(int l_word_size) : word_size(l_word_size) {}
 	int get_word_size() { return word_size; }
-	void attach_memory(Memory *l_mem) { mem = l_mem; }
+	void attach_memory(Memory *l_mem) { mem = l_mem; mem->attach_cpu(this);}
+	int get_clock() { return clock; }
+	void clock_incr() { clock++; }
+	void clock_set(int l_clock) { clock = l_clock; }
 
 	uint32_t read(uint32_t addr);
 	void write(uint32_t word, uint32_t addr);

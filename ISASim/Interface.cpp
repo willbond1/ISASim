@@ -1,7 +1,7 @@
 #include "pch.h"
 
 void Interface::help() {
-	std::cout << "Commands: (r)ead, (w)rite, (d)isplay, run commands from (f)ile, (h)elp" << std::endl;
+	std::cout << "Commands: (r)ead, (w)rite, (d)isplay memory, run commands from (f)ile, (e)xecute program, (h)elp" << std::endl;
 }
 
 void Interface::poll() {
@@ -34,13 +34,13 @@ void Interface::poll() {
 			}
 			break;
 		case 'c':
-			old_t = clock;
+			old_t = f_cpu->get_clock();
 			result = 0;
 			while (f_cpu->mem->query_timer(addr) < f_cpu->mem->get_latency()) {
 				result = f_cpu->read(addr);
 			}
 			result = f_cpu->read(addr);
-			std::cout << "Time taken: " << (clock - old_t) << std::endl;
+			std::cout << "Time taken: " << (f_cpu->get_clock() - old_t) << std::endl;
 			std::cout << "Read result: " << std::hex << result << std::endl;
 			f_cpu->mem->reset_timer(addr);
 			break;
@@ -65,13 +65,13 @@ void Interface::poll() {
 			}
 			break;
 		case 'c':
-			old_t = clock;
+			old_t = f_cpu->get_clock();
 			while (f_cpu->mem->query_timer(addr) < f_cpu->mem->get_latency()) {
 				f_cpu->write(word, addr);
 			}
 			f_cpu->write(word, addr);
 			f_cpu->mem->reset_timer(addr);
-			std::cout << "Time taken: " << (clock - old_t) << std::endl;
+			std::cout << "Time taken: " << (f_cpu->get_clock() - old_t) << std::endl;
 			break;
 		default:
 			std::cout << "Mode not recognized" << std::endl;
@@ -99,15 +99,39 @@ void Interface::poll() {
 			s >> com;
 			switch_cmd(com, s);
 		}
+		file.close();
+		break;
+	case 'e':
+		execute();
 		break;
 	default:
 		std::cout << "Command not recognized" << std::endl;
 	}
-	if (std::cin.fail())
-	{
-		std::cin.clear();
+
+}
+
+void Interface::execute() {
+	char cmd;
+	bool with_pipe, with_cache;
+	std::string filename;
+	std::ifstream file;
+
+	std::cout << "Pipeline? y/n" << std::endl;
+	std::cin >> cmd;
+	with_pipe = (tolower(cmd) == 'y');
+	std::cout << "Cache? y/n" << std::endl;
+	std::cin >> cmd;
+	with_cache = (tolower(cmd) == 'y');
+	std::cout << "Filename? ";
+	std::cin >> filename;
+	file.open(filename);
+
+	while (true) {
+		std::cout << "(s)tep, (c)omplete, (b)reakpoint, for (n) cycles, save s(t)ate, (r)eset state, (v)iew registers, (d)isplay memory" << std::endl;
+		std::cin >> cmd;
 	}
-	std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+	file.close();
 }
 
 void Interface::switch_cmd(char cmd, std::stringstream& file) {
@@ -158,11 +182,6 @@ void Interface::switch_cmd(char cmd, std::stringstream& file) {
 	default:
 		std::cout << "Command not recognized" << std::endl;
 	}
-	if (std::cin.fail())
-	{
-		std::cin.clear();
-		std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-	}
 }
 
 void Interface::switch_mod(char mod, char cmd, uint32_t addr, uint32_t word, std::stringstream& file) {
@@ -179,13 +198,13 @@ void Interface::switch_mod(char mod, char cmd, uint32_t addr, uint32_t word, std
 			}
 			break;
 		case 'c':
-			old_t = clock;
+			old_t = f_cpu->get_clock();
 			result = 0;
 			while (f_cpu->mem->query_timer(addr) < f_cpu->mem->get_latency()) {
 				result = f_cpu->read(addr);
 			}
 			result = f_cpu->read(addr);
-			std::cout << "Time taken: " << (clock - old_t) << std::endl;
+			std::cout << "Time taken: " << (f_cpu->get_clock() - old_t) << std::endl;
 			std::cout << "Read result: " << std::hex << result << std::endl;
 			f_cpu->mem->reset_timer(addr);
 			break;
@@ -200,13 +219,13 @@ void Interface::switch_mod(char mod, char cmd, uint32_t addr, uint32_t word, std
 			}
 			break;
 		case 'c':
-			old_t = clock;
+			old_t = f_cpu->get_clock();
 			while (f_cpu->mem->query_timer(addr) < f_cpu->mem->get_latency()) {
 				f_cpu->write(word, addr);
 			}
 			f_cpu->write(word, addr);
 			f_cpu->mem->reset_timer(addr);
-			std::cout << "Time taken: " << (clock - old_t) << std::endl;
+			std::cout << "Time taken: " << (f_cpu->get_clock() - old_t) << std::endl;
 			break;
 		}
 		break;

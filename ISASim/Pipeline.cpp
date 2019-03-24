@@ -28,25 +28,22 @@ bool CPU::Pipeline::decode()
 	{
 	case 0:
 		decode_ALU();
-		decode_ins.decoded = true;
 		break;
 	case 1:
 		decode_Memory();
-		decode_ins.decoded = true;
 		break;
 	case 2:
 		decode_Control();
-		decode_ins.decoded = true;
 		break;
 	case 3:
 		no_op();
-		decode_ins.decoded = true;
 		break;
 	default:
 		std::cout << "Problem in IC decode";
 		break;
 	}
 
+	decode_ins.decoded = true;
 }
 
 /*		\uint32_t machine_code;
@@ -131,7 +128,7 @@ void CPU::Pipeline::decode_Control()
 {
 	decode_ins.offset_register = decode_ins.machine_code & 0x2000000;
 	decode_ins.link = decode_ins.machine_code & 0x1000000;
-	if(decode_ins.offset_register)
+	if (decode_ins.offset_register)
 		decode_ins.rm_number = decode_ins.machine_code & 0xF;
 	decode_ins.rd_number = PC;
 	decode_ins.write_back = true;
@@ -186,7 +183,7 @@ uint32_t CPU::Pipeline::barrel_shifter(uint32_t value, uint32_t shift_amount, ui
 {
 	switch (shift_type)
 	{
-	//LSL
+		//LSL
 	case 0:
 		return (value << shift_amount);
 	case 1:
@@ -198,5 +195,5 @@ uint32_t CPU::Pipeline::barrel_shifter(uint32_t value, uint32_t shift_amount, ui
 	default:
 		return (value);
 	}
-	
+
 }
