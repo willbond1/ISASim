@@ -26,6 +26,7 @@ private:
 	struct Instruction
 	{
 		uint32_t machine_code;
+		uint32_t result; // instruction result (if there is one)
 		uint8_t condition_code;
 		uint8_t instruction_code;
 		uint8_t opcode;
@@ -47,7 +48,7 @@ private:
 	class Pipeline
 	{
 	private:
-		CPU *CPU;
+		CPU *cpu;
 		Instruction fetch_ins;
 		Instruction decode_ins;
 		Instruction execute_ins;
@@ -55,9 +56,9 @@ private:
 		Instruction writeback_ins;
 
 	public:
-		Pipeline();
+		Pipeline(CPU *l_cpu);
 		~Pipeline();
-		void pipelineController();
+		void step(bool pipe, bool cache);
 		void flushPipeline();
 		bool decode();
 		void decode_ALU();
@@ -68,6 +69,7 @@ private:
 		uint32_t barrel_shifter(uint32_t value, uint32_t shift_amount, uint8_t shift_type);
 	};
 
+	Pipeline pipe = Pipeline(this);
 
 public:
 	CPU(int l_word_size) : word_size(l_word_size) {}
@@ -76,6 +78,7 @@ public:
 	int get_clock() { return clock; }
 	void clock_incr() { clock++; }
 	void clock_set(int l_clock) { clock = l_clock; }
+	void step(bool use_pipe, bool use_cache) { pipe.step(use_pipe, use_cache); }
 
 	uint32_t read(uint32_t addr);
 	void write(uint32_t word, uint32_t addr);

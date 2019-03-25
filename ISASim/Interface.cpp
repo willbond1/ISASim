@@ -129,6 +129,30 @@ void Interface::execute() {
 	while (true) {
 		std::cout << "(s)tep, (c)omplete, (b)reakpoint, for (n) cycles, save s(t)ate, (r)eset state, (v)iew registers, (d)isplay memory" << std::endl;
 		std::cin >> cmd;
+
+		switch (tolower(cmd)) {
+		case 's':
+			f_cpu->step(with_pipe, with_cache);
+			std::cout << "Clock: " << f_cpu->get_clock() << std::endl;
+			break;
+		case 'c':
+			break;
+		case 'b':
+			break;
+		case 'n':
+			break;
+		case 't':
+			break;
+		case 'r':
+			break;
+		case 'v':
+			break;
+		case 'd':
+			break;
+		default:
+			std::cout << "Command not recognized." << std::endl;
+			break;
+		}
 	}
 
 	file.close();

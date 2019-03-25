@@ -2,7 +2,7 @@
 #include "CPU.h"
 
 
-CPU::Pipeline::Pipeline()
+CPU::Pipeline::Pipeline(CPU *l_cpu) : cpu(l_cpu)
 {
 }
 
@@ -11,8 +11,35 @@ CPU::Pipeline::~Pipeline()
 {
 }
 
-void CPU::Pipeline::pipelineController()
+void CPU::Pipeline::step(bool pipe, bool cache)
 {
+	uint32_t next_inst; // next instruction from memory
+	Memory *mem_pointer = cpu->mem; // pointer to memory to read/write from
+	uint32_t next_addr = cpu->registers[PC]; // next instruction address
+	uint32_t result = writeback_ins.result;
+
+	if (!cache) { // directly access memory
+		while (mem_pointer->next_level() != 0) { // get pointer to main memory
+			mem_pointer = mem_pointer->next_level();
+		}
+	}
+
+	while (mem_pointer->query_timer(next_addr) < mem_pointer->get_latency()) {
+		next_inst = mem_pointer->read(next_addr);
+	}
+	next_inst = mem_pointer->read(next_addr);
+
+	while (mem_pointer->query_timer(next_addr) < mem_pointer->get_latency()) {
+		; // should write to memory, if memory_ins
+	}
+
+	if (pipe) { // normal pipeline
+
+	} else { // move pipeline along but don't accept new instructions until empty
+
+	}
+
+	cpu->clock_incr();
 }
 
 void CPU::Pipeline::flushPipeline()
@@ -143,33 +170,33 @@ bool CPU::Pipeline::condition_valid(uint8_t code)
 	switch (code)
 	{
 	case 0:
-		return CPU->Z_flag;
+		return cpu->Z_flag;
 	case 1:
-		return !CPU->Z_flag;
+		return !cpu->Z_flag;
 	case 2:
-		return CPU->C_flag;
+		return cpu->C_flag;
 	case 3:
-		return !CPU->C_flag;
+		return !cpu->C_flag;
 	case 4:
-		return CPU->N_flag;
+		return cpu->N_flag;
 	case 5:
-		return !CPU->N_flag;
+		return !cpu->N_flag;
 	case 6:
-		return CPU->V_flag;
+		return cpu->V_flag;
 	case 7:
-		return !CPU->V_flag;
+		return !cpu->V_flag;
 	case 8:
-		return CPU->C_flag && !CPU->Z_flag;
+		return cpu->C_flag && !cpu->Z_flag;
 	case 9:
-		return !CPU->C_flag || CPU->Z_flag;
+		return !cpu->C_flag || cpu->Z_flag;
 	case 10:
-		return CPU->N_flag == CPU->V_flag;
+		return cpu->N_flag == cpu->V_flag;
 	case 11:
-		return CPU->N_flag != CPU->V_flag;
+		return cpu->N_flag != cpu->V_flag;
 	case 12:
-		return !CPU->Z_flag && (CPU->N_flag == CPU->V_flag);
+		return !cpu->Z_flag && (cpu->N_flag == cpu->V_flag);
 	case 13:
-		return CPU->Z_flag || (CPU->N_flag != CPU->V_flag);
+		return cpu->Z_flag || (cpu->N_flag != cpu->V_flag);
 	case 14:
 		return true;
 	case 15:

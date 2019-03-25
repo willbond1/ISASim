@@ -89,6 +89,7 @@ public:
 	void increment_timer(uint32_t addr) { timers[addr]++; }
 	void reset_timer(uint32_t addr) { timers[addr] = 0; }
 	uint32_t get_latency() { return latency; }
+	Memory *next_level() { return next_level; }
 
 	uint32_t read(uint32_t addr);
 	std::vector<uint32_t> read_block(uint32_t addr);
