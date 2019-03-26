@@ -26,6 +26,13 @@ private:
 	struct Instruction
 	{
 		uint32_t machine_code;
+		uint32_t result;
+		uint32_t offset_amount;
+		uint32_t rd_value;
+		uint32_t rn_value;
+		uint32_t rm_value;
+		uint32_t rs_value;
+		uint32_t op2_value;
 		uint8_t condition_code;
 		uint8_t instruction_code;
 		uint8_t opcode;
@@ -34,11 +41,12 @@ private:
 		uint8_t rm_number;
 		uint8_t rs_number;
 		uint8_t off_shift_type;
-		bool write_back;
+		bool write_rn;
+		bool write_rd;
 		bool pre_index;
 		bool add_sub_offset;
-		bool offset_register;
-		bool offset_shift_register;
+		bool rm_register_used;
+		bool rs_register_used;
 		bool update_status;
 		bool link;
 		bool decoded = false;
@@ -66,6 +74,12 @@ private:
 		void no_op();
 		bool condition_valid(uint8_t code);
 		uint32_t barrel_shifter(uint32_t value, uint32_t shift_amount, uint8_t shift_type);
+		void execute();
+		void execute_ALU();
+		void execute_Memory();
+		void execute_Control();
+		void memory();
+		void writeback();
 	};
 
 

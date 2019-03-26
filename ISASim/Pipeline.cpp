@@ -59,12 +59,13 @@ bool CPU::Pipeline::decode()
 		bool post_index;
 		bool add_sub_offset;
 		bool load_write;
-		bool offset_register;
-		bool offset_shift_register;
+		bool rm_register_used;
+		bool rs_register_used;
 */
 
 void CPU::Pipeline::decode_ALU()
 {
+	decode_ins.write_rn = false;
 	//Always post-index
 	decode_ins.pre_index = false;
 	//Always adding signed offset
@@ -72,7 +73,7 @@ void CPU::Pipeline::decode_ALU()
 	//Opcode
 	decode_ins.opcode = (decode_ins.machine_code & 0x1e00000) >> 21;
 	//Whether writes to register
-	decode_ins.write_back = !(decode_ins.opcode >= 8 && decode_ins.opcode <= 11);
+	decode_ins.write_rd = !(decode_ins.opcode >= 8 && decode_ins.opcode <= 11);
 	//Rd
 	decode_ins.rd_number = (decode_ins.machine_code & 0xF0000) >> 16;
 	//Rn (OP1)
@@ -80,21 +81,21 @@ void CPU::Pipeline::decode_ALU()
 	//S
 	decode_ins.update_status = decode_ins.machine_code & 0x100000;
 	//I
-	decode_ins.offset_register = decode_ins.machine_code & 0x2000000;
+	decode_ins.rm_register_used = decode_ins.machine_code & 0x2000000;
 
-	if (decode_ins.offset_register) {
+	if (decode_ins.rm_register_used) {
 		decode_ins.rm_number = decode_ins.machine_code & 0xF;
-		decode_ins.offset_shift_register = decode_ins.machine_code & 0x10;
+		decode_ins.rs_register_used = decode_ins.machine_code & 0x10;
 
-		if (decode_ins.offset_shift_register)
+		if (decode_ins.rs_register_used)
 			decode_ins.rs_number = (decode_ins.machine_code & 0xf00) >> 8;
 		else
-			decode_ins.offset_shift_register = false;
+			decode_ins.rs_register_used = false;
 
 		decode_ins.off_shift_type = (decode_ins.machine_code & 0x60) >> 5;
 	}
 	else {
-		decode_ins.offset_shift_register = false;
+		decode_ins.rs_register_used = false;
 	}
 }
 
@@ -105,33 +106,37 @@ void CPU::Pipeline::decode_Memory()
 	//U
 	decode_ins.add_sub_offset = decode_ins.machine_code & 0x800000;
 	//W
-	decode_ins.write_back = decode_ins.machine_code & 0x400000;
+	decode_ins.write_rn = decode_ins.machine_code & 0x400000;
 	//L
 	decode_ins.opcode = decode_ins.machine_code & 0x200000;
+	decode_ins.write_rd = decode_ins.opcode;
 	//Rd
 	decode_ins.rd_number = (decode_ins.machine_code & 0x1E000) >> 13;
 	//Rn (OP1)
 	decode_ins.rn_number = (decode_ins.machine_code & 0x1E0000) >> 17;
 	//I
-	decode_ins.offset_register = decode_ins.machine_code & 0x2000000;
-	if (decode_ins.offset_register) {
+	decode_ins.rm_register_used = decode_ins.machine_code & 0x2000000;
+	if (decode_ins.rm_register_used) {
 		//Rm
 		decode_ins.rm_number = decode_ins.machine_code & 0xF;
 		//Shift type
 		decode_ins.off_shift_type = (decode_ins.machine_code & 0xc0) >> 5;
 	}
+	else {
+		decode_ins.offset_amount = decode_ins.machine_code & 0xfff;
+	}
 	//Always Immediate Shift Amount
-	decode_ins.offset_shift_register = false;
+	decode_ins.rs_register_used = false;
 }
 
 void CPU::Pipeline::decode_Control()
 {
-	decode_ins.offset_register = decode_ins.machine_code & 0x2000000;
+	decode_ins.rm_register_used = decode_ins.machine_code & 0x2000000;
 	decode_ins.link = decode_ins.machine_code & 0x1000000;
-	if (decode_ins.offset_register)
+	if (decode_ins.rm_register_used)
 		decode_ins.rm_number = decode_ins.machine_code & 0xF;
 	decode_ins.rd_number = PC;
-	decode_ins.write_back = true;
+	decode_ins.write_rd = true;
 }
 
 void CPU::Pipeline::no_op()
@@ -196,4 +201,57 @@ uint32_t CPU::Pipeline::barrel_shifter(uint32_t value, uint32_t shift_amount, ui
 		return (value);
 	}
 
+}
+
+void CPU::Pipeline::execute() {
+	switch (execute_ins.instruction_code)
+	{
+	case 0:
+		execute_ALU();
+		break;
+	case 1:
+		execute_Memory();
+		break;
+	case 2:
+		execute_Control();
+		break;
+	case 3:
+		no_op();
+		break;
+	default:
+		std::cout << "Problem in IC decode";
+		break;
+	}
+
+}
+
+void CPU::Pipeline::execute_ALU()
+{
+}
+
+void CPU::Pipeline::execute_Memory()
+{
+	if (execute_ins.pre_index) {
+		execute_ins.rn_value += execute_ins.offset_amount;
+	}
+}
+
+void CPU::Pipeline::execute_Control()
+{
+}
+
+void CPU::Pipeline::memory() {
+	if (memory_ins.instruction_code == 1) {
+		if (memory_ins.opcode == 1)
+			memory_ins.result = CPU->read(memory_ins.rn_value);
+		else if (memory_ins.opcode == 0)
+			CPU->write(memory_ins.rd_value, memory_ins.rn_value);
+	}
+}
+
+void CPU::Pipeline::writeback() {
+	if (writeback_ins.write_rn == true)
+		CPU->registers[writeback_ins.rn_number] = writeback_ins.rn_value + writeback_ins.offset_amount;
+	if (writeback_ins.write_rd == true)
+		CPU->registers[writeback_ins.rd_number] = writeback_ins.result;
 }
