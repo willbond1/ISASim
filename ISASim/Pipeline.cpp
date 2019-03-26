@@ -2,7 +2,7 @@
 #include "CPU.h"
 
 
-CPU::Pipeline::Pipeline()
+CPU::Pipeline::Pipeline(CPU *l_cpu) : cpu(l_cpu)
 {
 }
 
@@ -11,8 +11,29 @@ CPU::Pipeline::~Pipeline()
 {
 }
 
-void CPU::Pipeline::pipelineController()
+void CPU::Pipeline::step(bool pipe, bool cache, uint32_t next_inst) // next_inst passed in externally, NOT read from memory
 {
+	Memory *mem_pointer = cpu->mem; // pointer to memory to read/write from
+	uint32_t next_addr = cpu->registers[PC]; // next instruction address
+	uint32_t result = writeback_ins.result;
+
+	if (!cache) { // directly access memory
+		while (mem_pointer->get_next_level() != 0) { // get pointer to main memory
+			mem_pointer = mem_pointer->get_next_level();
+		}
+	}
+
+	while (mem_pointer->query_timer(next_addr) < mem_pointer->get_latency()) {
+		; // should write to memory, if memory_ins
+	}
+
+	if (pipe) { // normal pipeline
+
+	} else { // move pipeline along but don't accept new instructions until empty
+
+	}
+
+	cpu->clock_incr();
 }
 
 void CPU::Pipeline::flushPipeline()
@@ -148,33 +169,33 @@ bool CPU::Pipeline::condition_valid(uint8_t code)
 	switch (code)
 	{
 	case 0:
-		return CPU->Z_flag;
+		return cpu->Z_flag;
 	case 1:
-		return !CPU->Z_flag;
+		return !cpu->Z_flag;
 	case 2:
-		return CPU->C_flag;
+		return cpu->C_flag;
 	case 3:
-		return !CPU->C_flag;
+		return !cpu->C_flag;
 	case 4:
-		return CPU->N_flag;
+		return cpu->N_flag;
 	case 5:
-		return !CPU->N_flag;
+		return !cpu->N_flag;
 	case 6:
-		return CPU->V_flag;
+		return cpu->V_flag;
 	case 7:
-		return !CPU->V_flag;
+		return !cpu->V_flag;
 	case 8:
-		return CPU->C_flag && !CPU->Z_flag;
+		return cpu->C_flag && !cpu->Z_flag;
 	case 9:
-		return !CPU->C_flag || CPU->Z_flag;
+		return !cpu->C_flag || cpu->Z_flag;
 	case 10:
-		return CPU->N_flag == CPU->V_flag;
+		return cpu->N_flag == cpu->V_flag;
 	case 11:
-		return CPU->N_flag != CPU->V_flag;
+		return cpu->N_flag != cpu->V_flag;
 	case 12:
-		return !CPU->Z_flag && (CPU->N_flag == CPU->V_flag);
+		return !cpu->Z_flag && (cpu->N_flag == cpu->V_flag);
 	case 13:
-		return CPU->Z_flag || (CPU->N_flag != CPU->V_flag);
+		return cpu->Z_flag || (cpu->N_flag != cpu->V_flag);
 	case 14:
 		return true;
 	case 15:
@@ -243,15 +264,24 @@ void CPU::Pipeline::execute_Control()
 void CPU::Pipeline::memory() {
 	if (memory_ins.instruction_code == 1) {
 		if (memory_ins.opcode == 1)
-			memory_ins.result = CPU->read(memory_ins.rn_value);
+			memory_ins.result = cpu->read(memory_ins.rn_value);
 		else if (memory_ins.opcode == 0)
-			CPU->write(memory_ins.rd_value, memory_ins.rn_value);
+			cpu->write(memory_ins.rd_value, memory_ins.rn_value);
 	}
 }
 
 void CPU::Pipeline::writeback() {
 	if (writeback_ins.write_rn == true)
-		CPU->registers[writeback_ins.rn_number] = writeback_ins.rn_value + writeback_ins.offset_amount;
+		cpu->registers[writeback_ins.rn_number] = writeback_ins.rn_value + writeback_ins.offset_amount;
 	if (writeback_ins.write_rd == true)
-		CPU->registers[writeback_ins.rd_number] = writeback_ins.result;
+		cpu->registers[writeback_ins.rd_number] = writeback_ins.result;
+}
+
+void CPU::Pipeline::display_contents() {
+	std::cout << "Pipeline contents:" << std::endl
+		<< "Fetch step: " << fetch_ins.machine_code << std::endl
+		<< "Decode step: " << decode_ins.machine_code << std::endl
+		<< "Execute step: " << execute_ins.machine_code << std::endl
+		<< "Memory step: " << memory_ins.machine_code << std::endl
+		<< "Writeback step: " << writeback_ins.machine_code << std::endl;
 }

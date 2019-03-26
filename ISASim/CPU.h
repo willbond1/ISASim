@@ -5,9 +5,7 @@
 
 constexpr auto SP = 13;
 constexpr auto LR = 14;
-constexpr auto PC = 15;
-
-typedef uint32_t Register;
+constexpr auto PC = 15; // since instructions come from external file, PC value is line number of file
 
 class CPU {
 private:
@@ -16,7 +14,7 @@ private:
 	friend class Memory;
 	int word_size;
 	Memory *mem = 0;
-	Register registers[16];
+	uint32_t registers[16];
 	bool N_flag = false;
 	bool Z_flag = false;
 	bool C_flag = false;
@@ -26,7 +24,7 @@ private:
 	struct Instruction
 	{
 		uint32_t machine_code;
-		uint32_t result;
+		uint32_t result; // instruction result (if there is one)
 		uint32_t offset_amount;
 		uint32_t rd_value;
 		uint32_t rn_value;
@@ -55,7 +53,7 @@ private:
 	class Pipeline
 	{
 	private:
-		CPU *CPU;
+		CPU *cpu;
 		Instruction fetch_ins;
 		Instruction decode_ins;
 		Instruction execute_ins;
@@ -63,9 +61,9 @@ private:
 		Instruction writeback_ins;
 
 	public:
-		Pipeline();
+		Pipeline(CPU *l_cpu);
 		~Pipeline();
-		void pipelineController();
+		void step(bool pipe, bool cache, uint32_t next_inst);
 		void flushPipeline();
 		bool decode();
 		void decode_ALU();
@@ -74,6 +72,7 @@ private:
 		void no_op();
 		bool condition_valid(uint8_t code);
 		uint32_t barrel_shifter(uint32_t value, uint32_t shift_amount, uint8_t shift_type);
+		void display_contents();
 		void execute();
 		void execute_ALU();
 		void execute_Memory();
@@ -82,15 +81,20 @@ private:
 		void writeback();
 	};
 
+	Pipeline pipe = Pipeline(this);
 
 public:
-	CPU(int l_word_size) : word_size(l_word_size) {}
+	CPU(int l_word_size) : word_size(l_word_size) { registers[PC] = 0; }
 	int get_word_size() { return word_size; }
 	void attach_memory(Memory *l_mem) { mem = l_mem; mem->attach_cpu(this);}
 	int get_clock() { return clock; }
 	void clock_incr() { clock++; }
 	void clock_set(int l_clock) { clock = l_clock; }
+	void step(bool use_pipe, bool use_cache, uint32_t next_inst) { pipe.step(use_pipe, use_cache, next_inst); }
+	uint32_t get_pc() { return registers[PC]; }
 
 	uint32_t read(uint32_t addr);
 	void write(uint32_t word, uint32_t addr);
+	void display_registers();
+	void display_mem(uint32_t addr, uint32_t size);
 };

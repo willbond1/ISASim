@@ -271,6 +271,15 @@ void Memory::display() {
 	}
 }
 
+void Memory::display_memory(uint32_t addr, int lines) {
+	uint32_t index = decode_index(addr);
+	uint32_t tag = decode_tag(addr);
+	uint32_t offset = decode_offset(addr);
+
+	std::cout << "Memory starting at address " << addr << ":" << std::endl;
+	
+}
+
 //Set methods
 
 Memory::Line* Memory::Set::is_hit(uint32_t tag) {
@@ -358,6 +367,12 @@ void Memory::Set::display() {
 	}
 }
 
+void Memory::Set::display_mem(int start, int end) {
+	for (int i = start; i <= end; i++) {
+		lines[i].display();
+	}
+}
+
 // Line methods
 
 std::vector<uint32_t> Memory::Line::evict() {
@@ -368,7 +383,7 @@ std::vector<uint32_t> Memory::Line::evict() {
 }
 
 void Memory::Line::display() {
-	std::cout << tag << " ";
+	std::cout << "Tag: " << tag << " Words: ";
 	for (uint32_t i = 0; i < mem_array.size(); i++) {
 		std::cout << std::hex << mem_array[i] << " ";
 	}
