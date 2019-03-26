@@ -11,23 +11,17 @@ CPU::Pipeline::~Pipeline()
 {
 }
 
-void CPU::Pipeline::step(bool pipe, bool cache)
+void CPU::Pipeline::step(bool pipe, bool cache, uint32_t next_inst) // next_inst passed in externally, NOT read from memory
 {
-	uint32_t next_inst; // next instruction from memory
 	Memory *mem_pointer = cpu->mem; // pointer to memory to read/write from
 	uint32_t next_addr = cpu->registers[PC]; // next instruction address
 	uint32_t result = writeback_ins.result;
 
 	if (!cache) { // directly access memory
-		while (mem_pointer->next_level() != 0) { // get pointer to main memory
-			mem_pointer = mem_pointer->next_level();
+		while (mem_pointer->get_next_level() != 0) { // get pointer to main memory
+			mem_pointer = mem_pointer->get_next_level();
 		}
 	}
-
-	while (mem_pointer->query_timer(next_addr) < mem_pointer->get_latency()) {
-		next_inst = mem_pointer->read(next_addr);
-	}
-	next_inst = mem_pointer->read(next_addr);
 
 	while (mem_pointer->query_timer(next_addr) < mem_pointer->get_latency()) {
 		; // should write to memory, if memory_ins
@@ -223,4 +217,13 @@ uint32_t CPU::Pipeline::barrel_shifter(uint32_t value, uint32_t shift_amount, ui
 		return (value);
 	}
 
+}
+
+void CPU::Pipeline::display_contents() {
+	std::cout << "Pipeline contents:" << std::endl
+		<< "Fetch step: " << fetch_ins.machine_code << std::endl
+		<< "Decode step: " << decode_ins.machine_code << std::endl
+		<< "Execute step: " << execute_ins.machine_code << std::endl
+		<< "Memory step: " << memory_ins.machine_code << std::endl
+		<< "Writeback step: " << writeback_ins.machine_code << std::endl;
 }

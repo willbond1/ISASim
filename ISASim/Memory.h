@@ -60,6 +60,7 @@ private:
 		void lru_incr(Line * recent_line);
 		Line* find_LRU();
 		void display();
+		void display_mem(int start, int end);
 	};
 
 	CPU* cpu = 0;
@@ -89,7 +90,7 @@ public:
 	void increment_timer(uint32_t addr) { timers[addr]++; }
 	void reset_timer(uint32_t addr) { timers[addr] = 0; }
 	uint32_t get_latency() { return latency; }
-	Memory *next_level() { return next_level; }
+	Memory *get_next_level() { return next_level; }
 
 	uint32_t read(uint32_t addr);
 	std::vector<uint32_t> read_block(uint32_t addr);
@@ -104,4 +105,5 @@ public:
 	uint32_t query_timer(uint32_t addr);
 	void print();
 	void display(); // prints the contents of memory to screen
+	void display_memory(uint32_t addr, int lines);
 };

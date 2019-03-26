@@ -115,6 +115,9 @@ void Interface::execute() {
 	bool with_pipe, with_cache;
 	std::string filename;
 	std::ifstream file;
+	uint32_t inst;
+	std::string line;
+	int bp = -1; // break point
 
 	std::cout << "Pipeline? y/n" << std::endl;
 	std::cin >> cmd;
@@ -126,28 +129,80 @@ void Interface::execute() {
 	std::cin >> filename;
 	file.open(filename);
 
-	while (true) {
-		std::cout << "(s)tep, (c)omplete, (b)reakpoint, for (n) cycles, save s(t)ate, (r)eset state, (v)iew registers, (d)isplay memory" << std::endl;
+	while (!file.eof()) {
+		std::cout << "(s)tep, (c)omplete, (b)reakpoint, for (n) cycles, save s(t)ate, (l)oad state, (r)eset state, (v)iew registers, (d)isplay memory" << std::endl;
 		std::cin >> cmd;
 
 		switch (tolower(cmd)) {
 		case 's':
-			f_cpu->step(with_pipe, with_cache);
+			std::getline(file, line);
+			inst = (uint32_t)std::stoul(line);
+			f_cpu->step(with_pipe, with_cache, inst);
 			std::cout << "Clock: " << f_cpu->get_clock() << std::endl;
+			if (f_cpu->get_pc() == bp)
+				std::cout << "Breakpoint reached." << std::endl;
 			break;
 		case 'c':
+			while (std::getline(file, line) && f_cpu->get_pc() != bp) {
+				inst = (uint32_t)std::stoul(line);
+				f_cpu->step(with_pipe, with_cache, inst);
+				std::cout << "Clock: " << f_cpu->get_clock() << std::endl;
+			}
+			if (f_cpu->get_pc() == bp)
+				std::cout << "Breakpoint reached." << std::endl;
 			break;
 		case 'b':
+			std::cout << "Break at which line?" << std::endl;
+			std::cin >> bp;
 			break;
 		case 'n':
+			std::cout << "Run for how many cycles?" << std::endl;
+			int cycles;
+			std::cin >> cycles;
+			for (int i = 0; i < cycles && std::getline(file, line) && f_cpu->get_pc() != bp; i++) {
+				inst = (uint32_t)std::stoul(line);
+				f_cpu->step(with_pipe, with_cache, inst);
+				std::cout << "Clock: " << f_cpu->get_clock() << std::endl;
+			}
+			if (f_cpu->get_pc() == bp)
+				std::cout << "Breakpoint reached." << std::endl;
 			break;
 		case 't':
+			if (save_state != 0) {
+				std::cout << "Old state will be overwritten. Is this okay? y/n" << std::endl;
+				std::cin >> cmd;
+				if (tolower(cmd) == 'n') break;
+			}
+			save_state = f_cpu;
+			std::cout << "State saved." << std::endl;
+			break;
+		case 'l':
+			if (save_state != 0) {
+				std::cout << "Current state will be overwritten. Is this okay? y/n" << std::endl;
+				std::cin >> cmd;
+				if (tolower(cmd) == 'n') break;
+				f_cpu = save_state;
+			} else {
+				std::cout << "Nothing to load." << std::endl;
+			}
 			break;
 		case 'r':
+			std::cout << "This will reset the state of the processor. Is this okay? y/n" << std::endl;
+			std::cin >> cmd;
+			if (tolower(cmd) == 'n') break;
+			f_cpu = new CPU(f_cpu->get_word_size());
 			break;
 		case 'v':
+			f_cpu->display_registers();
 			break;
 		case 'd':
+			std::cout << "Display how many sets?" << std::endl;
+			int size;
+			std::cin >> size;
+			std::cout << "Starting at what address?" << std::endl;
+			uint32_t addr;
+			std::cin >> addr;
+			f_cpu->display_mem(addr, size);
 			break;
 		default:
 			std::cout << "Command not recognized." << std::endl;
