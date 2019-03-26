@@ -4,6 +4,8 @@
 #include <iostream>
 #include <map>
 
+class CPU;
+
 class Memory {
 private:
 	friend class Interface;
@@ -17,7 +19,7 @@ private:
 		std::vector<uint32_t> mem_array; // array of words in memory
 
 	public:
-		Line(int words, bool is_RAM) : mem_array(std::vector<uint32_t>(words, 0)), empty(!is_RAM) {};
+		Line(int words, bool is_RAM) : mem_array(std::vector<uint32_t>(words, 0)), empty(!is_RAM) {}
 		void set_dirty(bool new_dirty) { dirty = new_dirty; }
 		bool is_dirty() { return dirty; }
 		bool is_empty() { return empty; }
@@ -48,7 +50,7 @@ private:
 				for (std::vector<Line>::size_type i = 0; i < lines.size(); i++) {
 					lines[i].set_tag(i);
 				}
-		};
+		}
 
 		uint32_t read(uint32_t tag, uint32_t offset);
 		std::vector<uint32_t> read(uint32_t tag);
@@ -61,7 +63,7 @@ private:
 		void display();
 	};
 
-	CPU* cpu = 0;
+	CPU* f_cpu = 0;
 	Memory* next_level = 0;
 	uint32_t latency;
 	std::map<uint32_t, uint32_t> timers; // each address access has its own timer to track latency
@@ -83,8 +85,8 @@ private:
 
 public:
 	Memory(uint32_t l_latency, uint32_t l_ways, uint32_t l_size, uint32_t l_line_length, uint32_t l_word_size, bool is_RAM);
-	void attach_cpu(CPU* l_cpu) { cpu = l_cpu; }
-	void attach_memory(Memory* l_mem) { next_level = l_mem; next_level->attach_cpu(cpu); }
+	void attach_cpu(CPU* l_cpu) { f_cpu = l_cpu; }
+	void attach_memory(Memory* l_mem) { next_level = l_mem; next_level->attach_cpu(f_cpu); }
 	void increment_timer(uint32_t addr) { timers[addr]++; }
 	void reset_timer(uint32_t addr) { timers[addr] = 0; }
 	uint32_t get_latency() { return latency; }

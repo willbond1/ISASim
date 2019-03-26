@@ -65,7 +65,7 @@ private:
 		~Pipeline();
 		void step(bool pipe, bool cache, uint32_t next_inst);
 		void flushPipeline();
-		bool decode();
+		void decode();
 		void decode_ALU();
 		void decode_Memory();
 		void decode_Control();

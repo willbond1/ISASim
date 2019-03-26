@@ -42,7 +42,7 @@ void CPU::Pipeline::flushPipeline()
 }
 
 
-bool CPU::Pipeline::decode()
+void CPU::Pipeline::decode()
 {
 	decode_ins.condition_code = (decode_ins.machine_code & 0xf0000000) >> 28;
 	decode_ins.instruction_code = (decode_ins.machine_code & 0x0c000000) >> 26;
@@ -202,7 +202,7 @@ bool CPU::Pipeline::condition_valid(uint8_t code)
 	case 15:
 		return false;
 	default:
-		break;
+		return false;
 	}
 }
 

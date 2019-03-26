@@ -29,7 +29,7 @@ Memory::Line* Memory::is_hit(uint32_t index, uint32_t tag) {
 }
 
 uint32_t Memory::read(uint32_t addr) {
-	cpu->clock_incr();
+	f_cpu->clock_incr();
 	if (query_timer(addr) == latency) {
 		uint32_t index = decode_index(addr);
 		uint32_t tag = decode_tag(addr);
@@ -77,7 +77,7 @@ uint32_t Memory::read(uint32_t addr) {
 }
 
 std::vector<uint32_t> Memory::read_block(uint32_t addr) {
-	cpu->clock_incr();
+	f_cpu->clock_incr();
 	if (query_timer(addr) == latency) {
 		uint32_t index = decode_index(addr);
 		uint32_t tag = decode_tag(addr);
@@ -125,7 +125,7 @@ std::vector<uint32_t> Memory::read_block(uint32_t addr) {
 }
 
 void Memory::write(uint32_t word, uint32_t addr) {
-	cpu->clock_incr();
+	f_cpu->clock_incr();
 	if (query_timer(addr) == latency) {
 		uint32_t index = decode_index(addr);
 		uint32_t tag = decode_tag(addr);
@@ -171,7 +171,7 @@ void Memory::write(uint32_t word, uint32_t addr) {
 }
 
 void Memory::write(std::vector<uint32_t> &block, uint32_t addr) {
-	cpu->clock_incr();
+	f_cpu->clock_incr();
 	if (query_timer(addr) == latency) {
 		uint32_t index = decode_index(addr);
 		uint32_t tag = decode_tag(addr);
