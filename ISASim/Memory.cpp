@@ -271,13 +271,14 @@ void Memory::display() {
 	}
 }
 
-void Memory::display_memory(uint32_t addr, int lines) {
+void Memory::display_memory(uint32_t addr, int size) {
 	uint32_t index = decode_index(addr);
-	uint32_t tag = decode_tag(addr);
-	uint32_t offset = decode_offset(addr);
-
 	std::cout << "Memory starting at address " << addr << ":" << std::endl;
-	
+
+	for (uint32_t i = index; i < (index + size) && i < set_n; i++) {
+		std::cout << "Set " << i << ":" << std::endl;
+		sets[i].display();
+	}
 }
 
 //Set methods
@@ -364,12 +365,6 @@ Memory::Line* Memory::Set::find_LRU() { // returns pointer to first empty block 
 void Memory::Set::display() {
 	for (Line line : lines) {
 		line.display();
-	}
-}
-
-void Memory::Set::display_mem(int start, int end) {
-	for (int i = start; i <= end; i++) {
-		lines[i].display();
 	}
 }
 

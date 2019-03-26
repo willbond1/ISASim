@@ -47,7 +47,6 @@ private:
 			if (is_RAM)
 				for (std::vector<Line>::size_type i = 0; i < lines.size(); i++) {
 					lines[i].set_tag(i);
-					std::cout << "LINE: " << i << " " << lines[i].get_tag() << std::endl;
 				}
 		};
 
@@ -60,7 +59,6 @@ private:
 		void lru_incr(Line * recent_line);
 		Line* find_LRU();
 		void display();
-		void display_mem(int start, int end);
 	};
 
 	CPU* cpu = 0;
@@ -105,5 +103,5 @@ public:
 	uint32_t query_timer(uint32_t addr);
 	void print();
 	void display(); // prints the contents of memory to screen
-	void display_memory(uint32_t addr, int lines);
+	void display_memory(uint32_t addr, int sets);
 };

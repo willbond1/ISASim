@@ -196,13 +196,15 @@ void Interface::execute() {
 			f_cpu->display_registers();
 			break;
 		case 'd':
+			std::cout << "What level of memory? (1 indexed)" << std::endl;
+			std::cin >> cmd;
 			std::cout << "Display how many sets?" << std::endl;
 			int size;
 			std::cin >> size;
 			std::cout << "Starting at what address?" << std::endl;
 			uint32_t addr;
 			std::cin >> addr;
-			f_cpu->display_mem(addr, size);
+			f_cpu->display_mem(addr, size, cmd);
 			break;
 		default:
 			std::cout << "Command not recognized." << std::endl;

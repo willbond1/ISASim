@@ -23,6 +23,10 @@ void CPU::display_registers() {
 	pipe.display_contents();
 }
 
-void CPU::display_mem(uint32_t addr, uint32_t size) {
-
+void CPU::display_mem(uint32_t addr, uint32_t sets, int lvl) {
+	Memory *cur_mem = mem;
+	for (int i = 1; i < lvl && cur_mem->get_next_level() != 0; i++) {
+		cur_mem = cur_mem->get_next_level();
+	}
+	cur_mem->display_memory(addr, sets);
 }

@@ -29,7 +29,8 @@ void CPU::Pipeline::step(bool pipe, bool cache, uint32_t next_inst) // next_inst
 
 	if (pipe) { // normal pipeline
 
-	} else { // move pipeline along but don't accept new instructions until empty
+	}
+	else { // move pipeline along but don't accept new instructions until empty
 
 	}
 

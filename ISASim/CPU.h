@@ -86,7 +86,7 @@ private:
 public:
 	CPU(int l_word_size) : word_size(l_word_size) { registers[PC] = 0; }
 	int get_word_size() { return word_size; }
-	void attach_memory(Memory *l_mem) { mem = l_mem; mem->attach_cpu(this);}
+	void attach_memory(Memory *l_mem) { mem = l_mem; mem->attach_cpu(this); }
 	int get_clock() { return clock; }
 	void clock_incr() { clock++; }
 	void clock_set(int l_clock) { clock = l_clock; }
@@ -96,5 +96,5 @@ public:
 	uint32_t read(uint32_t addr);
 	void write(uint32_t word, uint32_t addr);
 	void display_registers();
-	void display_mem(uint32_t addr, uint32_t size);
+	void display_mem(uint32_t addr, uint32_t sets, int lvl);
 };
