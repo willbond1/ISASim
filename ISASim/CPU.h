@@ -23,7 +23,7 @@ private:
 
 	struct Instruction
 	{
-		uint32_t machine_code;
+		uint32_t machine_code = 0xffffffff;
 		uint32_t result; // instruction result (if there is one)
 		int32_t offset_amount;
 		uint32_t rd_value;
@@ -32,7 +32,7 @@ private:
 		uint32_t rs_value;
 		uint32_t op2_value;
 		uint8_t condition_code;
-		uint8_t instruction_code;
+		uint8_t instruction_code = 3;
 		uint8_t opcode;
 		uint8_t rd_number;
 		uint8_t rn_number;
@@ -61,12 +61,14 @@ private:
 		Instruction execute_ins;
 		Instruction memory_ins;
 		Instruction writeback_ins;
+		Instruction no_op_ins;
 
 	public:
 		Pipeline(CPU *l_cpu);
 		~Pipeline();
 		void step(bool pipe, bool cache, uint32_t next_inst);
 		void flushPipeline();
+		
 		void decode();
 		void decode_ALU();
 		void decode_Memory();

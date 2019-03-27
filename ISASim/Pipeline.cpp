@@ -29,14 +29,42 @@ void CPU::Pipeline::step(bool pipe, bool cache, uint32_t next_inst) // next_inst
 	}
 
 	if (pipe) { // normal pipeline
+		fetch_ins.machine_code = cpu->read(next_addr);
+		decode();
+		execute();
+		memory();
+		writeback();
+
+		writeback_ins = memory_ins;
+		memory_ins = execute_ins;
+		if (decode_ins.decoded) {
+			execute_ins = decode_ins;
+			decode_ins = fetch_ins;
+		}
+		else
+			execute_ins = no_op_ins;
 
 	}
 	else { // move pipeline along but don't accept new instructions until empty
-
+		fetch_ins.machine_code = cpu->read(next_addr);
+		cpu->clock_incr();
+		decode_ins = fetch_ins;
+		decode();
+		cpu->clock_incr();
+		execute_ins = decode_ins;
+		execute();
+		cpu->clock_incr();
+		memory_ins = execute_ins;
+		memory();
+		cpu->clock_incr();
+		writeback_ins = memory_ins;
+		writeback();
+		cpu->clock_incr();
 	}
 
 	cpu->clock_incr();
 }
+
 
 void CPU::Pipeline::flushPipeline()
 {
@@ -115,6 +143,7 @@ void CPU::Pipeline::decode()
 		}
 		if (decode_ins.rm_register_used) {
 			decode_ins.rm_value = cpu->registers[decode_ins.rm_number];
+			decode_ins.op2_value = decode_ins.rm_value;
 		}
 		if (decode_ins.rs_register_used) {
 			decode_ins.rs_value = cpu->registers[decode_ins.rs_number];
