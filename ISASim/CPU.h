@@ -39,14 +39,16 @@ private:
 		uint8_t rm_number;
 		uint8_t rs_number;
 		uint8_t off_shift_type;
-		bool write_rn;
-		bool write_rd;
-		bool pre_index;
-		bool add_sub_offset;
-		bool rm_register_used;
-		bool rs_register_used;
-		bool update_status;
-		bool link;
+		bool write_rn = false;
+		bool write_rd = false;
+		bool pre_index = true;
+		bool add_sub_offset = true;
+		bool rd_register_used = false;
+		bool rn_register_used = false;
+		bool rm_register_used = false;
+		bool rs_register_used = false;
+		bool update_status = false;
+		bool link = false;
 		bool decoded = false;
 	};
 

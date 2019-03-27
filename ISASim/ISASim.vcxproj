@@ -159,7 +159,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CPU.cpp" />
-    <ClCompile Include="Instruction.cpp" />
     <ClCompile Include="Interface.cpp" />
     <ClCompile Include="ISASim.cpp" />
     <ClCompile Include="Memory.cpp" />
