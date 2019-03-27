@@ -128,40 +128,43 @@ void Interface::execute() {
 	std::cout << "Filename? ";
 	std::cin >> filename;
 	file.open(filename);
+	
+	uint32_t cur_PC = 0;
+	while (std::getline(file, line)) {
+		inst = (uint32_t)std::stoul(line);
+		while (f_cpu->mem->query_timer(cur_PC) <= f_cpu->mem->get_latency()) {
+			f_cpu->write(inst, cur_PC);
+		}
+		cur_PC += 4;
+	}
 
-	while (!file.eof()) {
+	while (true) {
 		std::cout << "(s)tep, (c)omplete, (b)reakpoint, for (n) cycles, save s(t)ate, (l)oad state, (r)eset state, (v)iew registers, (d)isplay memory" << std::endl;
 		std::cin >> cmd;
 
 		switch (tolower(cmd)) {
 		case 's':
-			std::getline(file, line);
-			inst = (uint32_t)std::stoul(line);
-			f_cpu->step(with_pipe, with_cache, inst);
+			f_cpu->step(with_pipe, with_cache);
 			std::cout << "Clock: " << f_cpu->get_clock() << std::endl;
 			if (f_cpu->get_pc() == bp)
 				std::cout << "Breakpoint reached." << std::endl;
 			break;
 		case 'c':
-			while (std::getline(file, line) && f_cpu->get_pc() != bp) {
-				inst = (uint32_t)std::stoul(line);
-				f_cpu->step(with_pipe, with_cache, inst);
+			while (f_cpu->step(with_pipe, with_cache) && (f_cpu->get_pc() != bp)) {
 				std::cout << "Clock: " << f_cpu->get_clock() << std::endl;
 			}
 			if (f_cpu->get_pc() == bp)
 				std::cout << "Breakpoint reached." << std::endl;
 			break;
 		case 'b':
-			std::cout << "Break at which line?" << std::endl;
+			std::cout << "Break at which address?" << std::endl;
 			std::cin >> bp;
 			break;
 		case 'n':
 			std::cout << "Run for how many cycles?" << std::endl;
 			int cycles;
 			std::cin >> cycles;
-			for (int i = 0; i < cycles && std::getline(file, line) && f_cpu->get_pc() != bp; i++) {
-				inst = (uint32_t)std::stoul(line);
-				f_cpu->step(with_pipe, with_cache, inst);
+			for (int i = 0; i < cycles && f_cpu->get_pc() != bp && f_cpu->step(with_pipe, with_cache); i++) {
 				std::cout << "Clock: " << f_cpu->get_clock() << std::endl;
 			}
 			if (f_cpu->get_pc() == bp)
@@ -173,7 +176,8 @@ void Interface::execute() {
 				std::cin >> cmd;
 				if (tolower(cmd) == 'n') break;
 			}
-			save_state = f_cpu;
+			save_state = new CPU(f_cpu->get_word_size());
+			f_cpu->deep_copy(save_state);
 			std::cout << "State saved." << std::endl;
 			break;
 		case 'l':
@@ -190,7 +194,9 @@ void Interface::execute() {
 			std::cout << "This will reset the state of the processor. Is this okay? y/n" << std::endl;
 			std::cin >> cmd;
 			if (tolower(cmd) == 'n') break;
+			Memory *mem = f_cpu->mem;
 			f_cpu = new CPU(f_cpu->get_word_size());
+			f_cpu->attach_memory(mem);
 			break;
 		case 'v':
 			f_cpu->display_registers();
