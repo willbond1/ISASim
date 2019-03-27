@@ -25,7 +25,7 @@ private:
 	{
 		uint32_t machine_code;
 		uint32_t result; // instruction result (if there is one)
-		uint32_t offset_amount;
+		int32_t offset_amount;
 		uint32_t rd_value;
 		uint32_t rn_value;
 		uint32_t rm_value;

@@ -157,6 +157,10 @@ void CPU::Pipeline::decode_Control()
 	decode_ins.link = decode_ins.machine_code & 0x1000000;
 	if (decode_ins.rm_register_used)
 		decode_ins.rm_number = decode_ins.machine_code & 0xF;
+	else {
+		uint32_t sign_extend = decode_ins.machine_code & 0x800000 ? 0xff000000 : 0;
+		decode_ins.offset_amount = (decode_ins.machine_code & 0xffffff) | sign_extend;
+	}
 	decode_ins.rd_number = PC;
 	decode_ins.write_rd = true;
 }
@@ -249,6 +253,23 @@ void CPU::Pipeline::execute() {
 
 void CPU::Pipeline::execute_ALU()
 {
+	switch (execute_ins.opcode)
+	{
+	case 2:
+	case 4: //ADD
+	case 11: //CMN
+	case 10:
+		uint64_t unsigned_sum = (uint64_t)execute_ins.rn_value + (uint64_t)execute_ins.op2_value;
+		int64_t signed_sum = (int64_t)(int32_t)execute_ins.rn_value + (int64_t)(int32_t)execute_ins.op2_value;
+		execute_ins.result = unsigned_sum & 0xffffffff;
+		if (execute_ins.update_status) {
+			cpu->C_flag = (((uint32_t)execute_ins.result) == unsigned_sum) ? 0 : 1;
+			cpu->V_flag = (((int32_t)execute_ins.result) == signed_sum) ? 0 : 1;
+		}
+		break;
+	default:
+		break;
+	}
 }
 
 void CPU::Pipeline::execute_Memory()
