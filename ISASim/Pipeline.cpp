@@ -28,6 +28,7 @@ bool CPU::Pipeline::step(bool pipe, bool cache)
 	while (mem_pointer->query_timer(next_addr) <= mem_pointer->get_latency()) {
 		next_inst = mem_pointer->read(next_addr);
 	}
+	mem_pointer->reset_timer(next_addr);
 
 	if (pipe) { // normal pipeline
 		fetch_ins.machine_code = next_inst;
@@ -61,7 +62,7 @@ bool CPU::Pipeline::step(bool pipe, bool cache)
 		writeback();
 	}
 
-	cpu->clock_incr();
+	f_cpu->clock_incr();
 	if (writeback_ins.machine_code == 0) {
 		return false;
 	} else {
