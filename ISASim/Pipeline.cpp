@@ -59,7 +59,6 @@ void CPU::Pipeline::step(bool pipe, bool cache, uint32_t next_inst) // next_inst
 		cpu->clock_incr();
 		writeback_ins = memory_ins;
 		writeback();
-		cpu->clock_incr();
 	}
 
 	cpu->clock_incr();
