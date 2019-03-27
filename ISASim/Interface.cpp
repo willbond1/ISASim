@@ -118,6 +118,7 @@ void Interface::execute() {
 	uint32_t inst;
 	std::string line;
 	int bp = -1; // break point
+	Memory *mem = f_cpu->mem;
 
 	std::cout << "Pipeline? y/n" << std::endl;
 	std::cin >> cmd;
@@ -194,7 +195,6 @@ void Interface::execute() {
 			std::cout << "This will reset the state of the processor. Is this okay? y/n" << std::endl;
 			std::cin >> cmd;
 			if (tolower(cmd) == 'n') break;
-			Memory *mem = f_cpu->mem;
 			f_cpu = new CPU(f_cpu->get_word_size());
 			f_cpu->attach_memory(mem);
 			break;
