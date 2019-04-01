@@ -30,3 +30,19 @@ void CPU::display_mem(uint32_t addr, uint32_t sets, int lvl) {
 	}
 	cur_mem->display_memory(addr, sets);
 }
+
+void CPU::deep_copy(CPU *l_cpu) {
+	l_cpu->attach_memory(mem);
+	l_cpu->word_size = this->word_size;
+	for (int i = 0; i < 16; i++) {
+		l_cpu->registers[i] = this->registers[i];
+	}
+
+	l_cpu->N_flag = this->N_flag;
+	l_cpu->Z_flag = this->Z_flag;
+	l_cpu->C_flag = this->C_flag;
+	l_cpu->V_flag = this->V_flag;
+
+	l_cpu->clock = this->clock;
+	pipe.deep_copy(&(l_cpu->pipe));
+}

@@ -55,7 +55,7 @@ private:
 	class Pipeline
 	{
 	private:
-		CPU *cpu;
+		CPU *f_cpu;
 		Instruction fetch_ins;
 		Instruction decode_ins;
 		Instruction execute_ins;
@@ -66,9 +66,9 @@ private:
 	public:
 		Pipeline(CPU *l_cpu);
 		~Pipeline();
-		void step(bool pipe, bool cache, uint32_t next_inst);
+		bool step(bool pipe, bool cache); // returns true if program is ongoing, false if ended
 		void flushPipeline();
-		
+
 		void decode();
 		void decode_ALU();
 		void decode_Memory();
@@ -83,6 +83,8 @@ private:
 		void execute_Control();
 		void memory();
 		void writeback();
+		void deep_copy(Pipeline *pipe);
+		void copy_inst(Instruction *from, Instruction inst);
 	};
 
 	Pipeline pipe = Pipeline(this);
@@ -94,11 +96,12 @@ public:
 	int get_clock() { return clock; }
 	void clock_incr() { clock++; }
 	void clock_set(int l_clock) { clock = l_clock; }
-	void step(bool use_pipe, bool use_cache, uint32_t next_inst) { pipe.step(use_pipe, use_cache, next_inst); }
+	bool step(bool use_pipe, bool use_cache) { return pipe.step(use_pipe, use_cache); }
 	uint32_t get_pc() { return registers[PC]; }
 
 	uint32_t read(uint32_t addr);
 	void write(uint32_t word, uint32_t addr);
 	void display_registers();
 	void display_mem(uint32_t addr, uint32_t sets, int lvl);
+	void deep_copy(CPU *l_cpu);
 };
