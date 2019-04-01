@@ -24,12 +24,12 @@ void CPU::Pipeline::step(bool pipe, bool cache, uint32_t next_inst) // next_inst
 		}
 	}
 
-	while (mem_pointer->query_timer(next_addr) < mem_pointer->get_latency()) {
+//	while (mem_pointer->query_timer(next_addr) < mem_pointer->get_latency()) {
 		; // should write to memory, if memory_ins
-	}
+	//}
 
 	if (pipe) { // normal pipeline
-		fetch_ins.machine_code = cpu->read(next_addr);
+		fetch_ins.machine_code = next_inst;
 		decode();
 		execute();
 		memory();
@@ -207,7 +207,7 @@ void CPU::Pipeline::decode_ALU()
 	//S
 	decode_ins.update_status = decode_ins.machine_code & 0x100000;
 	//I
-	decode_ins.rm_register_used = decode_ins.machine_code & 0x2000000;
+	decode_ins.rm_register_used = !(decode_ins.machine_code & 0x2000000);
 
 	if (decode_ins.rm_register_used) {
 		decode_ins.rm_number = decode_ins.machine_code & 0xF;
@@ -227,17 +227,19 @@ void CPU::Pipeline::decode_ALU()
 void CPU::Pipeline::decode_Memory()
 {
 	//P
-	decode_ins.pre_index = decode_ins.machine_code & 0x1000000;
+	decode_ins.pre_index = !(decode_ins.machine_code & 0x1000000);
 	//U
 	decode_ins.add_sub_offset = decode_ins.machine_code & 0x800000;
 	//W
 	decode_ins.write_rn = decode_ins.machine_code & 0x400000;
 	//L
 	decode_ins.opcode = decode_ins.machine_code & 0x200000;
-	decode_ins.write_rd = decode_ins.opcode;
+	decode_ins.write_rd = !decode_ins.opcode;
 	//Rd
+	decode_ins.rd_register_used = true;
 	decode_ins.rd_number = (decode_ins.machine_code & 0x1E000) >> 13;
 	//Rn (OP1)
+	decode_ins.rn_register_used = true;
 	decode_ins.rn_number = (decode_ins.machine_code & 0x1E0000) >> 17;
 	//I
 	decode_ins.rm_register_used = decode_ins.machine_code & 0x2000000;
@@ -335,6 +337,9 @@ uint32_t CPU::Pipeline::barrel_shifter(uint32_t value, uint32_t shift_amount, ui
 }
 
 void CPU::Pipeline::execute() {
+	if (execute_ins.machine_code == 3827310600) {
+		std::cout << "Hi";
+	}
 	if(condition_valid(execute_ins.condition_code))
 		switch (execute_ins.instruction_code)
 		{
@@ -367,6 +372,7 @@ void CPU::Pipeline::execute_ALU()
 	case 4: //ADD
 	case 11: //CMN
 	case 10:
+	default:
 		unsigned_sum = (uint64_t)execute_ins.rn_value + (uint64_t)execute_ins.op2_value;
 		signed_sum = (int64_t)(int32_t)execute_ins.rn_value + (int64_t)(int32_t)execute_ins.op2_value;
 		execute_ins.result = unsigned_sum & 0xffffffff;
@@ -377,8 +383,8 @@ void CPU::Pipeline::execute_ALU()
 			cpu->N_flag = execute_ins.result & 0x80000000;
 		}
 		break;
-	default:
-		break;
+	//default:
+		//break;
 	}
 }
 
@@ -398,10 +404,19 @@ void CPU::Pipeline::execute_Control()
 
 void CPU::Pipeline::memory() {
 	if (memory_ins.instruction_code == 1) {
-		if (memory_ins.opcode == 1)
+		if (memory_ins.opcode == 0) {
+			while (cpu->mem->query_timer(memory_ins.rn_value) < cpu->mem->get_latency()) {
+				memory_ins.result = cpu->read(memory_ins.rn_value); // should write to memory, if memory_ins
+			}
 			memory_ins.result = cpu->read(memory_ins.rn_value);
-		else if (memory_ins.opcode == 0)
+		}
+		else if (memory_ins.opcode == 1) {
+			while (cpu->mem->query_timer(memory_ins.rn_value) < cpu->mem->get_latency()) {
+				cpu->write(memory_ins.rd_value, memory_ins.rn_value);
+			}
 			cpu->write(memory_ins.rd_value, memory_ins.rn_value);
+		}
+		cpu->mem->reset_timer(memory_ins.rn_value);
 	}
 }
 

@@ -129,14 +129,17 @@ void Interface::execute() {
 	std::cin >> filename;
 	file.open(filename);
 
-	while (!file.eof()) {
+	while (true) {
 		std::cout << "(s)tep, (c)omplete, (b)reakpoint, for (n) cycles, save s(t)ate, (l)oad state, (r)eset state, (v)iew registers, (d)isplay memory" << std::endl;
 		std::cin >> cmd;
 
 		switch (tolower(cmd)) {
 		case 's':
 			std::getline(file, line);
-			inst = (uint32_t)std::stoul(line);
+			if (!file.eof())
+				inst = (uint32_t)std::stoul(line);
+			else
+				inst = 0xffffffff;
 			f_cpu->step(with_pipe, with_cache, inst);
 			std::cout << "Clock: " << f_cpu->get_clock() << std::endl;
 			if (f_cpu->get_pc() == bp)
