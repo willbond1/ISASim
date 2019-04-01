@@ -61,7 +61,7 @@ private:
 		Instruction execute_ins;
 		Instruction memory_ins;
 		Instruction writeback_ins;
-		Instruction no_op_ins;
+		const Instruction no_op_ins;
 
 	public:
 		Pipeline(CPU *l_cpu);

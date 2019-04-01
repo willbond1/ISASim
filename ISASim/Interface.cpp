@@ -133,10 +133,11 @@ void Interface::execute() {
 	uint32_t cur_PC = 0;
 	while (std::getline(file, line)) {
 		inst = (uint32_t)std::stoul(line);
-		while (f_cpu->mem->query_timer(cur_PC) <= f_cpu->mem->get_latency()) {
+		while (f_cpu->mem->query_timer(cur_PC) < f_cpu->mem->get_latency()) {
 			f_cpu->write(inst, cur_PC);
 		}
-		cur_PC += 4;
+		f_cpu->write(inst, cur_PC);
+		cur_PC += 1;
 	}
 
 	while (true) {
