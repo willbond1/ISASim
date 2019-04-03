@@ -59,7 +59,7 @@ class Memory:
     
     # read the word starting at [addr]
     def read(addr):
-        pass
+        self.f_cpu.clock += 1
     
     # write [word] to [addr]
     # word is a bytearray
@@ -81,8 +81,8 @@ class Cache(Memory):
 
 # memory class
 class RAM(Memory):
-    def __init__(self, latency, size):
-        super().__init__(latency, 1, size, CPU.word_size, True)
+    def __init__(self, latency, size, line_length):
+        super().__init__(latency, 1, size, line_length, True)
     
     def display(addr, size):
         pass
