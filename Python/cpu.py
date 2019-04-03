@@ -1,11 +1,10 @@
-from mem import Memory
-
-SP = 13
-LR = 14
-PC = 15
+from mem import Cache, RAM
 
 class CPU:
-    word_size = 32 # word size in bits
+    SP = 13
+    LR = 14
+    PC = 15
+    word_size = 4 # word size in bytes
     registers = [0] * 16
     N = False
     Z = False

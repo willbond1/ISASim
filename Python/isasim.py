@@ -1,4 +1,4 @@
-from mem import Memory
+from mem import Cache, RAM
 from cpu import CPU
 
 def main():
