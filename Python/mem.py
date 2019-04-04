@@ -33,6 +33,10 @@ class Line:
         print('Tag: ', hex(self.tag), ' Age: ', self.age, ' Line: ', end='')
         print(' '.join('{:02x}'.format(x) for x in self.mem_array))
 
+    def RAM_display(addr):
+        print(hex(addr), '   ', end='')
+        print(' '.join('{:02x}'.format(x) for x in self.mem_array))
+
 # represents single set which contains multiple lines
 class Set:
     def __init__(self, ways, words, is_ram):
@@ -291,4 +295,9 @@ class RAM(Memory):
     
     # display [size] lines of RAM starting at [addr]
     def display(addr, size):
-        pass
+        index = index(addr)
+        if (index + size) > self.set_n:
+            print('Out of range')
+            return
+        for i in range(index, (index + size)):
+            self.sets[i].RAM_display(i)
