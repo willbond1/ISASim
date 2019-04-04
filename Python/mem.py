@@ -24,16 +24,14 @@ class Line:
         return self.mem_array[offset : (offset + CPU.word_size)]
     
     def read(self):
-        return self.mem_array
+        return (self.tag, self.mem_array)
     
     def is_hit(self, tag):
         return (self.tag == tag and not empty)
-
-    def evict(self):
-        tmp = self.mem_array
-        self.mem_array = bytearray(len(self.mem_array))
-        self.empty = True
-        return tmp
+    
+    def display():
+        print('Tag: ', hex(self.tag), ' Age: ', self.age, ' Line: ', end='')
+        print(' '.join('{:02x}'.format(x) for x in self.mem_array))
 
 # represents single set which contains multiple lines
 class Set:
@@ -56,26 +54,22 @@ class Set:
     def read(self, tag):
         for line in self.lines:
             if line.is_hit(tag):
-                line.age = 0
                 return line.read()
 
     def read(self, tag, offset):
         for line in self.lines:
             if line.is_hit(tag):
-                line.age = 0
                 return line.read(offset)
     
     def write(self, block, tag):
         for line in self.lines:
             if line.is_hit(tag):
-                line.age = 0
                 line.write(block)
                 return
     
     def write(self, word, tag, offset):
         for line in self.lines:
             if line.is_hit(tag):
-                line.age = 0
                 line.write(word, offset)
                 return
 
@@ -88,8 +82,12 @@ class Set:
     def is_hit(self, tag):
         for line in self.lines:
             if line.is_hit(tag):
-                return True
-        return False
+                return line
+        return None
+
+    def display():
+        for line in lines:
+            line.display()
 
 # generic memory class
 class Memory:
@@ -120,30 +118,166 @@ class Memory:
     def offset(addr):
         return (addr & (self.word_n - 1))
 
+    def encode(tag, index, offset):
+        addr = tag << self.index_n
+        addr |= index
+        addr <<= self.offset_n
+        addr |= offset
+        return addr
+
     # print memory stats for debug
     def print_stats():
-        pass
+        print('Latency: ', self.latency)
+        print('Size in bytes: ', self.size)
+        print('Line/block length in bytes: ', self.line_length)
+        print('Associativity: ', self.ways)
+        print('Number of lines: ', self.line_n)
+        print('Number of sets: ', self.set_n)
+        print('Words per line: ', self.word_n)
+        print('Number of bits in index field: ', self.index_n)
+        print('Number of bits in offset field: ', self.offset_n)
+        print('Number of bits in tag field: ', self.tag_n)
     
-    # display [size] bytes of memory starting at [addr]
+    # display [size] sets of memory starting at [addr]
     def display(addr, size):
-        pass
+        index = index(addr)
+        if (index + size) > self.set_n:
+            print('Out of range')
+            return
+        for i in range(index, (index + size)):
+            print('Set index: ', hex(i))
+            self.sets[i].display()
     
+    def write_block(addr, block):
+        self.timers.setdefault(addr, default=0)
+        while self.timers[addr] < self.latency:
+            self.f_cpu.clock += 1
+            self.timers[addr] += 1
+        self.timers[addr] = 0
+
+        tag = tag(addr)
+        offset = offset(addr)
+        index = index(addr)
+
+        hit_block = self.sets[index].is_hit(tag)
+        if not hit_block:
+            hit_block = self.sets[index].find_LRU()
+            if hit_block.dirty:
+                old_tag, old_data = hit_block.read()
+                old_addr = self.encode(old_tag, index, 0)
+                self.next_level.write_block(old_addr, old_data)
+
+        hit_block.write(block)
+        hit_block.tag = tag
+        self.sets[index].LRU_incr(hit_block)
+        hit_block.age = 0
+        hit_block.dirty = True
+
+    def read_block(addr):
+        self.timers.setdefault(addr, default=0)
+        while self.timers[addr] < self.latency:
+            self.f_cpu.clock += 1
+            self.timers[addr] += 1
+        self.timers[addr] = 0
+
+        tag = tag(addr)
+        offset = offset(addr)
+        index = index(addr)
+
+        hit_block = self.sets[index].is_hit(tag)
+        if not hit_block:
+            hit_block = self.sets[index].find_LRU()
+            if hit_block.dirty:
+                old_tag, old_data = hit_block.read()
+                old_addr = self.encode(old_tag, index, 0)
+                self.next_level.write_block(old_addr, old_data)
+            
+            new_tag, new_data = self.next_level.read_block(addr)
+            hit_block.write(new_data)
+            hit_block.tag = new_tag
+            hit_block.dirty = False
+        
+        hit_block.age = 0
+        self.sets[index].LRU_incr(hit_block)
+        return hit_block.read()
+
     # read the word starting at [addr]
     def read(addr):
         self.f_cpu.clock += 1
+        t = self.timers.setdefault(addr, default=0)
+
+        if t == self.latency:
+            self.timers[addr] = 0
+            tag = tag(addr)
+            offset = offset(addr)
+            index = index(addr)
+
+            hit_block = self.sets[index].is_hit(tag)
+            if not hit_block:
+                hit_block = self.sets[index].find_LRU()
+                if hit_block.dirty:
+                    old_tag, old_data = hit_block.read()
+                    old_addr = self.encode(old_tag, index, 0)
+                    self.next_level.write_block(old_addr, old_data)
+                
+                new_tag, new_data = self.next_level.read_block(addr)
+                hit_block.write(new_data)
+                hit_block.tag = new_tag
+                hit_block.dirty = False
+
+            hit_block.age = 0
+            self.sets[index].LRU_incr(hit_block)
+            return hit_block.read(offset)
+
+        else:
+            self.timers[addr] += 1
+            return 0
     
     # write [word] to [addr]
     # word is a bytearray
     def write(addr, word):
-        pass
+        self.f_cpu.clock += 1
+        t = self.timers.setdefault(addr, default=0)
+
+        if t == self.latency:
+            self.timers[addr] = 0
+            tag = tag(addr)
+            offset = offset(addr)
+            index = index(addr)
+
+            hit_block = self.sets[index].is_hit(tag)
+            if not hit_block:
+                hit_block = self.sets[index].find_LRU()
+                if hit_block.dirty:
+                    old_tag, old_data = hit_block.read()
+                    old_addr = self.encode(old_tag, index, 0)
+                    self.next_level.write_block(old_addr, old_data)
+                
+                new_tag, new_data = self.next_level.read_block(addr)
+                hit_block.write(new_data)
+                hit_block.tag = new_tag
+                hit_block.dirty = False
+            
+            hit_block.write(word, offset)
+            hit_block.age = 0
+            self.sets[index].LRU_incr(hit_block)
+            hit_block.dirty = True
+
+        else:
+            self.timers[addr] += 1
+            return 0
 
     # read until it goes through
     def read_complete(addr):
-        pass
+        while self.timers[addr] < self.latency:
+            data = self.read(addr)
+        return self.read(addr)
     
     # attempt write until it goes through
     def write_complete(addr, word):
-        pass
+        while self.timers[addr] < self.latency:
+            self.write(addr, word)
+        self.write(addr, word)
 
 # cache class
 class Cache(Memory):
@@ -155,5 +289,6 @@ class RAM(Memory):
     def __init__(self, latency, size, line_length):
         super().__init__(latency, 1, size, line_length, True)
     
+    # display [size] lines of RAM starting at [addr]
     def display(addr, size):
         pass
