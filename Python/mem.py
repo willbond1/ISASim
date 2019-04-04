@@ -12,6 +12,29 @@ class Line:
         self.mem_array = bytearray(words * CPU.word_size)
         self.empty = (not is_ram)
 
+    def write(self, word, offset):
+        self.mem_array[offset : (offset + CPU.word_size)] = word
+        self.empty = False
+    
+    def write(self, words):
+        self.mem_array = words
+        self.empty = False
+    
+    def read(self, offset):
+        return self.mem_array[offset : (offset + CPU.word_size)]
+    
+    def read(self):
+        return self.mem_array
+    
+    def is_hit(self, tag):
+        return (self.tag == tag and not empty)
+
+    def evict(self):
+        tmp = self.mem_array
+        self.mem_array = bytearray(len(self.mem_array))
+        self.empty = True
+        return tmp
+
 # represents single set which contains multiple lines
 class Set:
     def __init__(self, ways, words, is_ram):
@@ -19,6 +42,54 @@ class Set:
         if is_ram:
             for i in range(len(lines)):
                 self.lines[i].tag = i
+
+    def find_LRU(self):
+        oldest = self.lines[0]
+        for line in self.lines:
+            if line.empty:
+                return line
+            if line.age > oldest.age:
+                oldest = line
+        
+        return line
+
+    def read(self, tag):
+        for line in self.lines:
+            if line.is_hit(tag):
+                line.age = 0
+                return line.read()
+
+    def read(self, tag, offset):
+        for line in self.lines:
+            if line.is_hit(tag):
+                line.age = 0
+                return line.read(offset)
+    
+    def write(self, block, tag):
+        for line in self.lines:
+            if line.is_hit(tag):
+                line.age = 0
+                line.write(block)
+                return
+    
+    def write(self, word, tag, offset):
+        for line in self.lines:
+            if line.is_hit(tag):
+                line.age = 0
+                line.write(word, offset)
+                return
+
+    # increment age of all blocks in set except given block
+    def LRU_incr(self, recent_line):
+        for line in self.lines:
+            if line is not recent_line:
+                line.age += 1
+    
+    def is_hit(self, tag):
+        for line in self.lines:
+            if line.is_hit(tag):
+                return True
+        return False
 
 # generic memory class
 class Memory:
