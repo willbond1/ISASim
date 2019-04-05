@@ -5,7 +5,7 @@ from cpu import CPU
 class Line:
     dirty = False
     age = 0
-    tag = 0
+    tag = 0x00
 
     # words is number of words in line
     def __init__(self, words, is_ram):
@@ -235,7 +235,7 @@ class Memory:
 
         else:
             self.timers[addr] += 1
-            return 0
+            return None
     
     # write [word] to [addr]
     # word is a bytearray
@@ -269,7 +269,7 @@ class Memory:
 
         else:
             self.timers[addr] += 1
-            return 0
+            return None
 
     # read until it goes through
     def read_complete(addr):
