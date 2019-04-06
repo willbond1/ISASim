@@ -176,6 +176,7 @@ class Memory:
         self.sets[index].LRU_incr(hit_block)
         hit_block.age = 0
         hit_block.dirty = True
+        self.f_cpu.clock += 1
 
     def read_block(addr):
         self.timers.setdefault(addr, default=0)
@@ -203,6 +204,7 @@ class Memory:
         
         hit_block.age = 0
         self.sets[index].LRU_incr(hit_block)
+        self.f_cpu.clock += 1
         return hit_block.read()
 
     # read the word starting at [addr]
@@ -230,10 +232,12 @@ class Memory:
 
             hit_block.age = 0
             self.sets[index].LRU_incr(hit_block)
+            self.f_cpu.clock += 1
             return hit_block.read(offset)
 
         else:
             self.timers[addr] += 1
+            self.f_cpu.clock += 1
             return None
     
     # write [word] to [addr]
@@ -264,25 +268,22 @@ class Memory:
             hit_block.age = 0
             self.sets[index].LRU_incr(hit_block)
             hit_block.dirty = True
+            self.f_cpu.clock += 1
 
         else:
             self.timers[addr] += 1
-            return None
+            self.f_cpu.clock += 1
 
     # read until it goes through
     def read_complete(addr):
         while self.timers[addr] < self.latency:
-            self.f_cpu += 1
             data = self.read(addr)
-        self.f_cpu += 1
         return self.read(addr)
     
     # attempt write until it goes through
     def write_complete(addr, word):
         while self.timers[addr] < self.latency:
-            self.f_cpu += 1
             self.write(addr, word)
-        self.f_cpu += 1
         self.write(addr, word)
 
 # cache class

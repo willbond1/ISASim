@@ -38,6 +38,51 @@ class CPU:
         self.memory_block = False
         self.writeback_block = False
 
+    def cond(cond_code):
+        if cond_code == 0:
+            return self.Z
+        elif cond_code == 1:
+            return (not self.Z)
+        elif cond_code == 2:
+            return self.C
+        elif cond_code == 3:
+            return (not self.C)
+        elif cond_code == 4:
+            return self.N
+        elif cond_code == 5:
+            return (not self.N)
+        elif cond_code == 6:
+            return self.V
+        elif cond_code == 7:
+            return (not self.V)
+        elif cond_code == 8:
+            return (self.C and (not self.Z))
+        elif cond_code == 9:
+            return ((not self.C) or self.Z)
+        elif cond_code == 10:
+            return (self.N == self.V)
+        elif cond_code == 11:
+            return (self.N != self.V)
+        elif cond_code == 12:
+            return ((not self.Z) and (self.N == self.V))
+        elif cond_code == 13:
+            return (self.Z or (self.N != self.V))
+        else:
+            return True
+
+    # handle different types of shift
+    def shifter(self, value, amount, shift_type):
+        if shift_type == 0:
+            return (value << amount)
+        elif shift_type == 1:
+            return (value >> amount) if value >= 0 else ((value + 0x100000000) >> amount) # 0x100000000 = 1 << 32
+        elif shift_type == 2:
+            return (value >> amount)
+        elif shift_type == 3:
+            return ((value >> amount) | (value << (32 - amount)))
+        else:
+            return value
+
     # grab next instruction from memory
     def fetch(self, active_memory):
         next_inst = active_memory.read(self.registers[PC])
@@ -117,17 +162,41 @@ class CPU:
 
     # execute instruction in decode_stage
     def execute(self):
-        pass
+        cond_code = self.execute_control[0]
+        inst_code = self.execute_control[1]
 
-    # execute instruction in memory_stage
+        def execute_ALU():
+            I = self.execute_control[2]
+            opcode = self.execute_control[3]
+            S = self.execute_control[4]
+            rd = self.execute_control[5]
+            ro = self.execute_control[6]
+
+            if I == 0:
+                pass
+            else:
+                pass
+        
+        def execute_memory():
+            pass
+        
+        def execute_control():
+            pass
+        
+        if inst_code == 0:
+            return execute_ALU()
+        elif inst_code == 1:
+            return execute_memory()
+        elif inst_code == 2:
+            return execute_control()
+        elif inst_code == 3:
+            return None
+        else:
+            print('Error executing instruction')
+            return None
+
+    # if instruction is a memory instruction, perform operation
     def memory_inst(self):
-        pass
-    
-    def writeback(self):
-        pass
-    
-    # empty pipeline before execute stage
-    def flush():
         pass
 
     # step pipeline, returns true if program is continuing, false if ended
@@ -157,8 +226,6 @@ class CPU:
         
         if not self.fetch_block: # move instruction from memory to fetch stage
             self.fetch_stage = fetch(active_memory)
-        
-        self.clock += 1
     
     def read(addr):
         self.clock += 1
