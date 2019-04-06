@@ -116,10 +116,32 @@ class CPU:
     def writeback(self):
         pass
     
-    # empty pipeline before execute stage and rewind PC
+    # empty pipeline before execute stage
     def flush():
         pass
 
     # step pipeline, returns true if program is continuing, false if ended
     def step(with_cache, with_pipe):
-        pass
+        active_memory = self.memory
+        if not with_cache: # get reference to RAM (no next level)
+            while active_memory.next_level:
+                active_memory = active_memory.next_level
+        
+        if self.writeback_stage != empty_stage:
+            pass
+        
+        if self.memory_stage != empty_stage:
+            pass
+        
+        if self.execute_stage != empty_stage:
+            pass
+        
+        if self.decode_stage != empty_stage: # execute and move to execute stage
+            pass
+        
+        if self.fetch_stage != empty_stage: # decode and move to decode stage and control registers
+            pass
+        
+        if with_pipe: # grab next instruction from memory
+            pass
+        
