@@ -34,7 +34,10 @@ class CPU:
     # grab next instruction from memory
     def fetch(self, active_memory):
         next_inst = active_memory.read(self.registers[PC])
-        return next_inst
+        if next_inst:
+            return next_inst
+        else:
+            return empty_stage
     
     # decode instruction in fetch_stage and return instruction fields as tuple
     def decode(self):
@@ -127,21 +130,21 @@ class CPU:
             while active_memory.next_level:
                 active_memory = active_memory.next_level
         
-        if self.writeback_stage != empty_stage:
+        if self.writeback_stage != empty_stage and self.writeback_control != empty_reg:
             pass
         
-        if self.memory_stage != empty_stage:
+        if self.memory_stage != empty_stage and self.writeback_stage == empty_stage and self.memory_control != empty_reg and self.writeback_control == empty_reg:
             pass
         
-        if self.execute_stage != empty_stage:
+        if self.execute_stage != empty_stage and self.memory_stage == empty_stage and self.execute_control != empty_reg and self.memory_control == empty_reg:
             pass
         
-        if self.decode_stage != empty_stage: # execute and move to execute stage
+        if self.decode_stage != empty_stage and self.execute_stage == empty_stage and self.execute_control == empty_reg: # execute and move to execute stage
             pass
         
-        if self.fetch_stage != empty_stage: # decode and move to decode stage and control registers
+        if self.fetch_stage != empty_stage and self.decode_stage == empty_stage: # decode and move to decode stage and control registers
             pass
         
-        if with_pipe: # grab next instruction from memory
-            pass
+        if with_pipe and self.fetch_stage == empty_stage: # grab next instruction from memory
+            self.fetch_stage = fetch(active_memory)
         
