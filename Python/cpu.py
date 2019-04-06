@@ -31,6 +31,13 @@ class CPU:
         self.memory_control = empty_reg
         self.writeback_control = empty_reg
     
+        # are stages blocked?
+        self.fetch_block = False
+        self.decode_block = False
+        self.execute_block = False
+        self.memory_block = False
+        self.writeback_block = False
+
     # grab next instruction from memory
     def fetch(self, active_memory):
         next_inst = active_memory.read(self.registers[PC])
@@ -130,21 +137,33 @@ class CPU:
             while active_memory.next_level:
                 active_memory = active_memory.next_level
         
-        if self.writeback_stage != empty_stage and self.writeback_control != empty_reg:
+        # move writeback stage out of pipeline
+
+        self.writeback_block = (self.memory_stage == empty_stage or self.writeback_stage != empty_stage or self.memory_control == empty_reg or self.writeback_control != empty_reg)
+        if not self.writeback_block: # move from memory to writeback stage
             pass
         
-        if self.memory_stage != empty_stage and self.writeback_stage == empty_stage and self.memory_control != empty_reg and self.writeback_control == empty_reg:
+        self.memory_block = (self.execute_stage == empty_stage or self.memory_stage != empty_stage or self.execute_control == empty_reg or self.memory_control != empty_reg)
+        if not self.memory_block: # move from execute to memory stage
             pass
         
-        if self.execute_stage != empty_stage and self.memory_stage == empty_stage and self.execute_control != empty_reg and self.memory_control == empty_reg:
+        self.execute_block = (self.decode_stage == empty_stage or self.execute_stage != empty_stage or self.execute_control != empty_reg)
+        if not self.execute_block: # move from decode to control registers/execute stage
             pass
         
-        if self.decode_stage != empty_stage and self.execute_stage == empty_stage and self.execute_control == empty_reg: # execute and move to execute stage
+        self.decode_block = (self.fetch_stage == empty_stage or self.decode_stage != empty_stage)
+        if not self.decode_block: # move from fetch to decode stage
             pass
         
-        if self.fetch_stage != empty_stage and self.decode_stage == empty_stage: # decode and move to decode stage and control registers
-            pass
-        
-        if with_pipe and self.fetch_stage == empty_stage: # grab next instruction from memory
+        if not self.fetch_block: # move instruction from memory to fetch stage
             self.fetch_stage = fetch(active_memory)
         
+        self.clock += 1
+    
+    def read(addr):
+        self.clock += 1
+        return self.memory.read_complete(addr)
+    
+    def write(addr, word):
+        self.clock += 1
+        self.memory.write_complete(addr, word)

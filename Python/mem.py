@@ -207,7 +207,6 @@ class Memory:
 
     # read the word starting at [addr]
     def read(addr):
-        self.f_cpu.clock += 1
         t = self.timers.setdefault(addr, default=0)
 
         if t == self.latency:
@@ -240,7 +239,6 @@ class Memory:
     # write [word] to [addr]
     # word is a bytearray
     def write(addr, word):
-        self.f_cpu.clock += 1
         t = self.timers.setdefault(addr, default=0)
 
         if t == self.latency:
@@ -274,13 +272,17 @@ class Memory:
     # read until it goes through
     def read_complete(addr):
         while self.timers[addr] < self.latency:
+            self.f_cpu += 1
             data = self.read(addr)
+        self.f_cpu += 1
         return self.read(addr)
     
     # attempt write until it goes through
     def write_complete(addr, word):
         while self.timers[addr] < self.latency:
+            self.f_cpu += 1
             self.write(addr, word)
+        self.f_cpu += 1
         self.write(addr, word)
 
 # cache class
