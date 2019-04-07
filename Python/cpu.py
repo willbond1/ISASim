@@ -187,18 +187,11 @@ class CPU:
         inst_code = self.execute_control[1]
 
         def execute_ALU():
-            I = self.execute_control[2]
-            opcode = self.execute_control[3]
-            S = self.execute_control[4]
-            rd = self.execute_control[5]
-            ro = self.execute_control[6]
+            I, opcode, S, rd, ro = self.execute_control[2:7]
             ro = self.registers[ro] & word_mask
             
             if I == 0:
-                shift_type = self.execute_control[8]
-                T = self.execute_control[9]
-                ro2 = self.execute_control[10]
-
+                shift_type, T, ro2 = self.execute_control[8:]
                 if T == 0:
                     shift_immediate = self.execute_control[7]
                     ro2, last_bit = self.shifter(ro2, shift_immediate, shift_type)
@@ -206,8 +199,7 @@ class CPU:
                     rs = self.execute_control[7]
                     ro2, last_bit = self.shifter(ro2, self.registers[rs], shift_type)
             else:
-                rotation = self.execute_control[7]
-                operand_immediate = self.execute_control[8]
+                rotation, operand_immediate = self.execute_control[7:]
                 operand_immediate = int(self.extend(operand_immediate, False))
                 ro2, last_bit = self.shifter(operand_immediate, (rotation * 2), 3)
             
@@ -277,11 +269,47 @@ class CPU:
             else:
                 return None
         
+        # returns a tuple consisting of the address to use for the memory access and the address to store in register
         def execute_memory():
-            pass
+            I, P, U, W, L, rn, rd = self.execute_control[2:9]
+            if I == 0:
+                offset = self.execute_control[9]
+            else:
+                offset_shift, shift_type, ro = self.execute_control[9:]
+                offset = self.shifter(self.registers[ro], offset_shift, shift_type)
+            
+            before_addr = self.registers[rn]
+            if U == 0: # how is offset applied?
+                after_addr = before_addr - offset
+            else:
+                after_addr = before_addr + offset
+            
+            if P == 0: # pre or post indexing?
+                use_addr = before_addr
+            else:
+                use_addr = after_addr
+            
+            if W == 0: # writeback?
+                reg_addr = None
+            else:
+                reg_addr = after_addr
         
+            return (use_addr, reg_addr)
+
         def execute_control():
-            pass
+            I, L = self.execute_control[2:4]
+            if I:
+                offset = self.execute_control[4]
+                offset = int(self.extend((offset << 2), True))
+                target = self.registers[PC] + offset
+            else:
+                ra = self.execute_control[4]
+                target = self.registers[ra]
+            
+            if L:
+                self.registers[LR] = self.registers[PC] - 4
+            
+            self.registers[PC] = target
         
         if cond(cond_code):
             if inst_code == 0:
@@ -299,6 +327,7 @@ class CPU:
             # flush pipeline and rewind PC here
             self.fetch_stage = empty_stage
             self.decode_stage = empty_stage
+            self.registers[PC] -= 8
             return None
 
     # if instruction is a memory instruction, perform operation
@@ -311,8 +340,8 @@ class CPU:
         if not with_cache: # get reference to RAM (no next level)
             while active_memory.next_level:
                 active_memory = active_memory.next_level
-        
-        # move writeback stage out of pipeline
+
+        self.writeback_stage = empty_stage
 
         self.writeback_block = (self.memory_stage == empty_stage or self.writeback_stage != empty_stage or self.memory_control == empty_reg or self.writeback_control != empty_reg)
         if not self.writeback_block: # move from memory to writeback stage
