@@ -1,6 +1,6 @@
 from mem import Cache, RAM
 
-empty_stage = int('0xFF' * CPU.word_size)
+empty_stage = word_mask = int('0xFF' * CPU.word_size)
 empty_reg = int('0x00' * CPU.word_size)
 
 # register constants for convenience
@@ -74,20 +74,27 @@ class CPU:
     # handle different types of shift
     def shifter(self, value, amount, shift_type, word_length=32):
         if shift_type == 0:
-            return (value << amount)
+            result = (value << amount) & word_mask
+            last_bit = (value >> (word_length - amount)) & 0x1
         elif shift_type == 1:
-            return (value >> amount) if value >= 0 else ((value + (1 << word_length)) >> amount) # 0x100000000 = 1 << 32
+            result = ((value >> amount) if value >= 0 else ((value + (1 << word_length)) >> amount)) & word_mask # 0x100000000 = 1 << 32
+            last_bit = (value >> (amount - 1)) & 0x1
         elif shift_type == 2:
-            return (value >> amount)
+            result = (value >> amount) & word_mask
+            last_bit = (value >> (amount - 1)) & 0x1
         elif shift_type == 3:
-            return ((value >> amount) | (value << (word_length - amount)))
+            result = (((value >> amount) | (value << (word_length - amount)))) & word_mask
+            last_bit = (value >> (amount - 1)) & 0x1
         else:
-            return value
+            result = value
+            last_bit = 0
+        
+        return (result, last_bit)
 
     # extend val with sign if sign is true, with 0 if false
     def extend(self, val, sign, word_length=32):
         bits = bin(val)
-        bit_len = len(bits)
+        bit_len = val.bit_len()
         if sign:
             prefix = bits[0] * (word_length - bit_len)
         else:
@@ -97,11 +104,9 @@ class CPU:
 
     # grab next instruction from memory
     def fetch(self, active_memory):
-        next_inst = active_memory.read(self.registers[PC])
-        if next_inst:
-            return next_inst
-        else:
-            return empty_stage
+        next_inst = active_memory.read_complete(self.registers[PC])
+        self.registers[PC] += 4
+        return next_inst & word_mask
     
     # decode instruction in fetch_stage and return instruction fields as tuple
     def decode(self):
@@ -187,6 +192,7 @@ class CPU:
             S = self.execute_control[4]
             rd = self.execute_control[5]
             ro = self.execute_control[6]
+            ro = self.registers[ro] & word_mask
             
             if I == 0:
                 shift_type = self.execute_control[8]
@@ -195,17 +201,81 @@ class CPU:
 
                 if T == 0:
                     shift_immediate = self.execute_control[7]
-                    ro2 = self.shifter(ro2, shift_immediate, shift_type)
+                    ro2, last_bit = self.shifter(ro2, shift_immediate, shift_type)
                 else:
                     rs = self.execute_control[7]
-                    ro2 = self.shifter(ro2, self.registers[rs], shift_type)
+                    ro2, last_bit = self.shifter(ro2, self.registers[rs], shift_type)
             else:
                 rotation = self.execute_control[7]
                 operand_immediate = self.execute_control[8]
                 operand_immediate = int(self.extend(operand_immediate, False))
-                ro2 = self.shifter(operand_immediate, (rotation * 2), 3)
+                ro2, last_bit = self.shifter(operand_immediate, (rotation * 2), 3)
             
-            # handle different opcodes here
+            if opcode == 0: # AND
+                result = ro & ro2
+                written = True
+            elif opcode == 1: # EOR
+                result = ro ^ ro2
+                written = True
+            elif opcode == 2: # SUB
+                result = ro - ro2
+                written = True
+            elif opcode == 3: # RSB
+                result = ro2 - ro
+                written = True
+            elif opcode == 4: # ADD
+                result = ro + ro2
+                written = True
+            elif opcode == 5: # ADC
+                result = ro + ro2 + int(self.C)
+                written = True
+            elif opcode == 6: # SBC
+                result = ro - ro2 + int(self.C) - 1
+                written = True
+            elif opcode == 7: # RSC
+                result = ro2 - ro + int(self.C) - 1
+                written = True
+            elif opcode == 8: # TST
+                result = ro & ro2
+                written = False
+            elif opcode == 9: # TEQ
+                result = ro ^ ro2
+                written = False
+            elif opcode == 10: # CMP
+                result = ro - ro2
+                written = False
+            elif opcode == 11: # CMN
+                result = ro + ro2
+                written = False
+            elif opcode == 12: # ORR
+                result = ro | ro2
+                written = True
+            elif opcode == 13: # MOV
+                result = ro2
+                written = True
+            elif opcode == 14: # BIC
+                result = ro & (~ro2)
+                written = True
+            elif opcode == 15: # MVN
+                result = ~ro2
+                written = True
+            
+            # handle setting condition registers
+            if S:
+                trunc_result = result & word_mask
+                self.N = (result < 0)
+                self.Z = (result == 0)
+                self.V = ((result > 0 and trunc_result < 0) or (result < 0 and trunc_result > 0))
+            
+                if opcode in (2, 3, 4, 5, 6, 7, 10, 11):
+                    self.C = (abs(result) > abs(trunc_result))
+                else:
+                    self.C = bool(last_bit)
+            
+            if written:
+                return result & word_mask
+            else:
+                return None
         
         def execute_memory():
             pass
@@ -227,7 +297,9 @@ class CPU:
                 return None
         else:
             # flush pipeline and rewind PC here
-            pass
+            self.fetch_stage = empty_stage
+            self.decode_stage = empty_stage
+            return None
 
     # if instruction is a memory instruction, perform operation
     def memory_inst(self):
