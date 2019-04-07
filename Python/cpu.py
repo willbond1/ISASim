@@ -38,6 +38,7 @@ class CPU:
         self.memory_block = False
         self.writeback_block = False
 
+    # determine truthiness of condition code
     def cond(cond_code):
         if cond_code == 0:
             return self.Z
@@ -71,17 +72,28 @@ class CPU:
             return True
 
     # handle different types of shift
-    def shifter(self, value, amount, shift_type):
+    def shifter(self, value, amount, shift_type, word_length=32):
         if shift_type == 0:
             return (value << amount)
         elif shift_type == 1:
-            return (value >> amount) if value >= 0 else ((value + 0x100000000) >> amount) # 0x100000000 = 1 << 32
+            return (value >> amount) if value >= 0 else ((value + (1 << word_length)) >> amount) # 0x100000000 = 1 << 32
         elif shift_type == 2:
             return (value >> amount)
         elif shift_type == 3:
-            return ((value >> amount) | (value << (32 - amount)))
+            return ((value >> amount) | (value << (word_length - amount)))
         else:
             return value
+
+    # extend val with sign if sign is true, with 0 if false
+    def extend(self, val, sign, word_length=32):
+        bits = bin(val)
+        bit_len = len(bits)
+        if sign:
+            prefix = bits[0] * (word_length - bit_len)
+        else:
+            prefix = '0' * (word_length - bit_len)
+        
+        return int(prefix + bits)
 
     # grab next instruction from memory
     def fetch(self, active_memory):
@@ -104,12 +116,16 @@ class CPU:
             ro = (self.fetch_stage & 0xF000) >> 12
 
             if I == 0:
-                shift = (self.fetch_stage & 0xF80) >> 7
                 shift_type = (self.fetch_stage & 0x60) >> 5
                 T = (self.fetch_stage & 0x10) >> 4
                 ro2 = (self.fetch_stage & 0xF)
 
-                return (cond_code, inst_code, I, opcode, S, rd, ro, shift, shift_type, T, ro2)
+                if T == 0:
+                    shift_immediate = (self.fetch_stage & 0xF80) >> 7
+                    return (cond_code, inst_code, I, opcode, S, rd, ro, shift_immediate, shift_type, T, ro2)
+                else:
+                    rs = (self.fetch_stage & 0xF00) >> 8
+                    return (cond_code, inst_code, I, opcode, S, rd, ro, rs, shift_type, T, ro2)
             else:
                 rotate = (self.fetch_stage & 0xF00) >> 8
                 operand_immediate = (self.fetch_stage & 0xFF)
@@ -171,11 +187,25 @@ class CPU:
             S = self.execute_control[4]
             rd = self.execute_control[5]
             ro = self.execute_control[6]
-
+            
             if I == 0:
-                pass
+                shift_type = self.execute_control[8]
+                T = self.execute_control[9]
+                ro2 = self.execute_control[10]
+
+                if T == 0:
+                    shift_immediate = self.execute_control[7]
+                    ro2 = self.shifter(ro2, shift_immediate, shift_type)
+                else:
+                    rs = self.execute_control[7]
+                    ro2 = self.shifter(ro2, self.registers[rs], shift_type)
             else:
-                pass
+                rotation = self.execute_control[7]
+                operand_immediate = self.execute_control[8]
+                operand_immediate = int(self.extend(operand_immediate, False))
+                ro2 = self.shifter(operand_immediate, (rotation * 2), 3)
+            
+            # handle different opcodes here
         
         def execute_memory():
             pass
@@ -183,17 +213,21 @@ class CPU:
         def execute_control():
             pass
         
-        if inst_code == 0:
-            return execute_ALU()
-        elif inst_code == 1:
-            return execute_memory()
-        elif inst_code == 2:
-            return execute_control()
-        elif inst_code == 3:
-            return None
+        if cond(cond_code):
+            if inst_code == 0:
+                return execute_ALU()
+            elif inst_code == 1:
+                return execute_memory()
+            elif inst_code == 2:
+                return execute_control()
+            elif inst_code == 3:
+                return None
+            else:
+                print('Error executing instruction')
+                return None
         else:
-            print('Error executing instruction')
-            return None
+            # flush pipeline and rewind PC here
+            pass
 
     # if instruction is a memory instruction, perform operation
     def memory_inst(self):
