@@ -39,7 +39,7 @@ class CPU:
         self.writeback_block = False
 
     # determine truthiness of condition code
-    def cond(cond_code):
+    def cond(self, cond_code):
         if cond_code == 0:
             return self.Z
         elif cond_code == 1:
@@ -100,7 +100,7 @@ class CPU:
         else:
             prefix = '0' * (word_length - bit_len)
         
-        return int(prefix + bits)
+        return int(prefix + bits) & word_mask
 
     # grab next instruction from memory
     def fetch(self, active_memory):
@@ -309,7 +309,10 @@ class CPU:
             if L:
                 self.registers[LR] = self.registers[PC] - 4
             
+            self.fetch_stage = empty_stage
+            self.decode_stage = empty_stage
             self.registers[PC] = target
+            return target
         
         if cond(cond_code):
             if inst_code == 0:
@@ -324,23 +327,29 @@ class CPU:
                 print('Error executing instruction')
                 return None
         else:
-            # flush pipeline and rewind PC here
+            # flush pipeline
             self.fetch_stage = empty_stage
             self.decode_stage = empty_stage
-            self.registers[PC] -= 8
+            self.registers[PC] -= 4 # rewind PC to instruction after this one
             return None
 
     # if instruction is a memory instruction, perform operation
     def memory_inst(self):
         pass
 
+    # write instruction result to destination register (if there is one) handling different instruction types
+    def writeback(self):
+        pass
+
     # step pipeline, returns true if program is continuing, false if ended
-    def step(with_cache, with_pipe):
+    def step(self, with_cache, with_pipe):
         active_memory = self.memory
         if not with_cache: # get reference to RAM (no next level)
             while active_memory.next_level:
                 active_memory = active_memory.next_level
 
+        if self.writeback_stage == 0: # 0 instruction signals end of program
+            return False
         self.writeback_stage = empty_stage
 
         self.writeback_block = (self.memory_stage == empty_stage or self.writeback_stage != empty_stage or self.memory_control == empty_reg or self.writeback_control != empty_reg)
@@ -361,11 +370,11 @@ class CPU:
         
         if not self.fetch_block: # move instruction from memory to fetch stage
             self.fetch_stage = fetch(active_memory)
+        
+        return True
     
-    def read(addr):
-        self.clock += 1
+    def read(self, addr):
         return self.memory.read_complete(addr)
     
-    def write(addr, word):
-        self.clock += 1
+    def write(self, addr, word):
         self.memory.write_complete(addr, word)
