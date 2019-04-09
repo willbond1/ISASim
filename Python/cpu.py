@@ -31,13 +31,6 @@ class CPU:
         self.execute_control = empty_reg
         self.memory_control = empty_reg
         self.writeback_control = empty_reg
-    
-        # are stages blocked?
-        self.fetch_block = False
-        self.decode_block = False
-        self.execute_block = False
-        self.memory_block = False
-        self.writeback_block = False
 
     def set_memory(self, memory):
         self.memory = memory
@@ -379,6 +372,7 @@ class CPU:
 
     # step pipeline, returns true if program is continuing, false if ended
     def step(self, with_cache, with_pipe):
+        self.clock += 1
         wrote_back = False
         active_memory = self.memory
         if not with_cache: # get reference to RAM (no next level)
