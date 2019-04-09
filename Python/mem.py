@@ -29,11 +29,11 @@ class Line:
     def is_hit(self, tag):
         return (self.tag == tag and not empty)
     
-    def display():
+    def display(self):
         print('Tag: ', hex(self.tag), ' Age: ', self.age, ' Line: ', end='')
         print(' '.join('{:02x}'.format(x) for x in self.mem_array))
 
-    def RAM_display(addr):
+    def RAM_display(self, addr):
         print(hex(addr), '   ', end='')
         print(' '.join('{:02x}'.format(x) for x in self.mem_array))
 
@@ -89,8 +89,8 @@ class Set:
                 return line
         return None
 
-    def display():
-        for line in lines:
+    def display(self):
+        for line in self.lines:
             line.display()
 
 # generic memory class
@@ -102,6 +102,8 @@ class Memory:
         self.ways = ways # lines per set
         self.size = size # total size of memory in bytes
         self.line_length = line_length # size of line in bytes
+        self.next_level = None
+        self.f_cpu = None
 
         self.line_n = size // line_length # number of lines
         self.set_n = ceil(line_n / ways) # number of sets
@@ -111,18 +113,24 @@ class Memory:
         self.tag_n = (CPU.word_size * 8) - (self.offset_n + self.index_n) # number of bits in tag field
         self.sets = [Set(self.ways, self.word_n, is_ram)] * self.set_n # create list of sets
 
-    def index(addr):
+    def set_CPU(self, processor):
+        self.f_cpu = processor
+
+    def set_next_level(next_level):
+        self.next_level = next_level
+
+    def index(self, addr):
         mask = (self.set_n - 1) << self.offset_n
         return ((addr & mask) >> self.offset_n)
     
-    def tag(addr):
+    def tag(self, addr):
         mask = ((2 ** self.tag_n) - 1) << (self.offset_n + self.index_n)
         return ((addr & mask) >> (self.offset_n + self.index_n))
     
-    def offset(addr):
+    def offset(self, addr):
         return (addr & (self.word_n - 1))
 
-    def encode(tag, index, offset):
+    def encode(self, tag, index, offset):
         addr = tag << self.index_n
         addr |= index
         addr <<= self.offset_n
@@ -130,7 +138,7 @@ class Memory:
         return addr
 
     # print memory stats for debug
-    def print_stats():
+    def print_stats(self):
         print('Latency: ', self.latency)
         print('Size in bytes: ', self.size)
         print('Line/block length in bytes: ', self.line_length)
@@ -143,7 +151,7 @@ class Memory:
         print('Number of bits in tag field: ', self.tag_n)
     
     # display [size] sets of memory starting at [addr]
-    def display(addr, size):
+    def display(self, addr, size):
         index = index(addr)
         if (index + size) > self.set_n:
             print('Out of range')
@@ -152,7 +160,7 @@ class Memory:
             print('Set index: ', hex(i))
             self.sets[i].display()
     
-    def write_block(addr, block):
+    def write_block(self, addr, block):
         self.timers.setdefault(addr, default=0)
         while self.timers[addr] < self.latency:
             self.f_cpu.clock += 1
@@ -178,7 +186,7 @@ class Memory:
         hit_block.dirty = True
         self.f_cpu.clock += 1
 
-    def read_block(addr):
+    def read_block(self, addr):
         self.timers.setdefault(addr, default=0)
         while self.timers[addr] < self.latency:
             self.f_cpu.clock += 1
@@ -208,7 +216,7 @@ class Memory:
         return hit_block.read()
 
     # read the word starting at [addr]
-    def read(addr):
+    def read(self, addr):
         t = self.timers.setdefault(addr, default=0)
 
         if t == self.latency:
@@ -242,7 +250,7 @@ class Memory:
     
     # write [word] to [addr]
     # word is a bytearray
-    def write(addr, word):
+    def write(self, addr, word):
         t = self.timers.setdefault(addr, default=0)
 
         if t == self.latency:
@@ -275,13 +283,13 @@ class Memory:
             self.f_cpu.clock += 1
 
     # read until it goes through
-    def read_complete(addr):
+    def read_complete(self, addr):
         while self.timers[addr] < self.latency:
             data = self.read(addr)
         return self.read(addr)
     
     # attempt write until it goes through
-    def write_complete(addr, word):
+    def write_complete(self, addr, word):
         while self.timers[addr] < self.latency:
             self.write(addr, word)
         self.write(addr, word)
@@ -297,7 +305,7 @@ class RAM(Memory):
         super().__init__(latency, 1, size, line_length, True)
     
     # display [size] lines of RAM starting at [addr]
-    def display(addr, size):
+    def display(self, addr, size):
         index = index(addr)
         if (index + size) > self.set_n:
             print('Out of range')
