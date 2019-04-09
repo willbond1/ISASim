@@ -93,7 +93,7 @@ class CPU:
 
     # extend val with sign if sign is true, with 0 if false
     def extend(self, val, sign, word_length=32):
-        bits = bin(val)
+        bits = bin(val)[2:]
         bit_len = val.bit_len()
         if sign:
             prefix = bits[0] * (word_length - bit_len)
@@ -200,7 +200,7 @@ class CPU:
                     ro2, last_bit = self.shifter(ro2, self.registers[rs], shift_type)
             else:
                 rotation, operand_immediate = self.execute_control[7:]
-                operand_immediate = int(self.extend(operand_immediate, False))
+                operand_immediate = self.extend(operand_immediate, False)
                 ro2, last_bit = self.shifter(operand_immediate, (rotation * 2), 3)
             
             if opcode == 0: # AND
@@ -251,6 +251,9 @@ class CPU:
             elif opcode == 15: # MVN
                 result = ~ro2
                 written = True
+            else:
+                print('Error finding ALU opcode')
+                return None
             
             # handle setting condition registers
             if S:
@@ -300,7 +303,7 @@ class CPU:
             I, L = self.execute_control[2:4]
             if I:
                 offset = self.execute_control[4]
-                offset = int(self.extend((offset << 2), True))
+                offset = self.extend((offset << 2), True)
                 target = self.registers[PC] + offset
             else:
                 ra = self.execute_control[4]
@@ -333,13 +336,42 @@ class CPU:
             self.registers[PC] -= 4 # rewind PC to instruction after this one
             return None
 
-    # if instruction is a memory instruction, perform operation
+    # if instruction is a memory instruction, perform operation using use address
+    # returns write address
     def memory_inst(self):
-        pass
+        inst_code = self.memory_control[1]
+        if inst_code == 1:
+            use_addr, write_addr = self.execute_stage
+            L = self.memory_control[6]
+            rd = self.memory_control[8]
+
+            if L == 0:
+                memory.write_complete(use_addr, self.registers[rd])
+            else:
+                self.registers[rd] = memory.read_complete(use_addr)
+            
+            return write_addr
+        else: # instruction is not memory access, so execute stage simply contains operation result
+            return self.execute_stage
 
     # write instruction result to destination register (if there is one) handling different instruction types
     def writeback(self):
-        pass
+        if self.memory_stage:
+            inst_code = self.writeback_control[1]
+            if inst_code == 0:
+                rd = self.writeback_control[5]
+            elif inst_code == 1:
+                rd = self.writeback_control[8]
+            elif (inst_code == 2) or (inst_code == 3): # control and no-op instructions don't write back
+                return None
+            else:
+                print('Error finding destination register in writeback stage')
+                return  
+
+            self.registers[rd] = self.memory_stage
+            return self.memory_stage
+        else: # value to write back is None, indicating no writeback
+            return None
 
     # step pipeline, returns true if program is continuing, false if ended
     def step(self, with_cache, with_pipe):
