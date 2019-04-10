@@ -1,8 +1,3 @@
-from mem import Cache, RAM
-
-empty_stage = word_mask = int('0xFF' * CPU.word_size)
-empty_reg = int('0x00' * CPU.word_size)
-
 # register constants for convenience
 SP = 13
 LR = 14
@@ -422,3 +417,8 @@ class CPU:
     
     def write(self, addr, word):
         self.memory.write_complete(addr, word)
+
+empty_stage = word_mask = int(('FF' * CPU.word_size), 16)
+empty_reg = int(('00' * CPU.word_size), 16)
+
+from mem import Cache, RAM

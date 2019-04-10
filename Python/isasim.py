@@ -11,5 +11,7 @@ def main():
     l1_cache.set_CPU(processor)
     ram.set_CPU(processor)
 
+    print('Processor set up successfully')
+
 if __name__ == '__main__':
     main()

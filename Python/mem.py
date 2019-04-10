@@ -1,6 +1,3 @@
-from math import ceil, log
-from cpu import CPU
-
 # represents single line/block in cache
 class Line:
     dirty = False
@@ -42,7 +39,7 @@ class Set:
     def __init__(self, ways, words, is_ram):
         self.lines = [Line(words, is_ram)] * ways
         if is_ram:
-            for i in range(len(lines)):
+            for i in range(len(self.lines)):
                 self.lines[i].tag = i
 
     def find_LRU(self):
@@ -105,8 +102,8 @@ class Memory:
         self.next_level = None
         self.f_cpu = None
 
-        self.line_n = size // line_length # number of lines
-        self.set_n = ceil(line_n / ways) # number of sets
+        self.line_n = self.size // self.line_length # number of lines
+        self.set_n = ceil(self.line_n / ways) # number of sets
         self.index_n = ceil(log(self.set_n, 2)) # number of bits required to index sets
         self.word_n = self.line_length // CPU.word_size # words per line
         self.offset_n = ceil(log(self.word_n, 2)) # number of bits in offset field
@@ -116,7 +113,7 @@ class Memory:
     def set_CPU(self, processor):
         self.f_cpu = processor
 
-    def set_next_level(next_level):
+    def set_next_level(self, next_level):
         self.next_level = next_level
 
     def index(self, addr):
@@ -312,3 +309,6 @@ class RAM(Memory):
             return
         for i in range(index, (index + size)):
             self.sets[i].RAM_display(i)
+
+from math import ceil, log
+from cpu import CPU
