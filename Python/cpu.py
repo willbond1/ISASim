@@ -1,3 +1,5 @@
+import struct
+
 # register constants for convenience
 SP = 13
 LR = 14
@@ -64,6 +66,7 @@ class CPU:
             return True
 
     # handle different types of shift
+    # returns tuple consisting of shift result and last bit shifted out (for setting C flag)
     def shifter(self, value, amount, shift_type, word_length=32):
         if shift_type == 0:
             result = (value << amount) & word_mask
@@ -98,6 +101,7 @@ class CPU:
     def fetch(self, active_memory):
         next_inst = active_memory.read_complete(self.registers[PC])
         self.registers[PC] += 4
+        next_inst = int.from_bytes(next_inst, byteorder='big', signed=False) # convert from bytearray to int
         return next_inst & word_mask
     
     # decode instruction in fetch_stage and return instruction fields as tuple
@@ -338,9 +342,10 @@ class CPU:
             rd = self.memory_control[8]
 
             if L == 0:
-                active_memory.write_complete(use_addr, self.registers[rd])
+                active_memory.write_complete(use_addr, self.registers[rd].to_bytes(4, byteorder='big'))
             else:
                 self.registers[rd] = active_memory.read_complete(use_addr)
+                self.registers[rd] = int.from_bytes(self.registers[rd], byteorder='big')
             
             return write_addr
         else: # instruction is not memory access, so execute stage simply contains operation result

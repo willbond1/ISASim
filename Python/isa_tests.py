@@ -22,5 +22,13 @@ class TestISA(unittest.TestCase):
         self.f_cpu.write(0x00, word_bytes)
         self.assertEqual(word_bytes, self.f_cpu.read(0x00))
 
+        word = 126
+        word_bytes = word.to_bytes(4, byteorder='big')
+        self.f_cpu.write(0x16, word_bytes)
+        self.assertEqual(word_bytes, self.f_cpu.read(0x16))
+    
+    def test_LRU_replace(self):
+        pass
+
 if __name__ == '__main__':
     unittest.main()
