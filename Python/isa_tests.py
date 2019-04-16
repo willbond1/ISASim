@@ -1,7 +1,11 @@
+import struct
+import unittest
+from cpu import CPU
+from mem import Cache, RAM
 
 class TestISA(unittest.TestCase):
     def __init__(self, *args, **kwargs):
-        super().__init__(self, *args, **kwargs)
+        super(TestISA, self).__init__(*args, **kwargs)
         self.f_cpu = CPU()
         self.l1 = Cache(5, 2, 32, 8)
         self.mem = RAM(10, 128, 4)
@@ -20,8 +24,3 @@ class TestISA(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-
-import struct
-import unittest
-from cpu import CPU
-from mem import Cache, RAM
