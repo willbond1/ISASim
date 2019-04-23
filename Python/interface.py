@@ -1,7 +1,7 @@
-#from . import assembler
-#from . import cpu
-#from . import isasim
-#from . import mem
+import Python.assembler
+import Python.cpu
+import Python.isasim
+import Python.mem
 
 from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QTableWidgetItem
 from Python.dialog import Ui_MainWindow
@@ -23,27 +23,24 @@ class AppWindow(QMainWindow):
         self.ui.memCombo_2.addItems(mem_selections)
         #for
 
-        def gen(max):
-            num = 0
-            while num<max:
-                yield str(num)
-                num = num+1
-
-        self.ui.memList_1.setVerticalHeaderLabels(gen(1000000))
-        self.ui.memList_2.setVerticalHeaderLabels(gen(1000000))
-
-        self.ui.memList_1.setRowCount(0);
-        #self.ui.memList_1.insertRow(1);
+        self.ui.memList_1.verticalHeader().hide()
+        self.ui.memList_2.verticalHeader().hide()
 
         def loadtable1():
             print(self.ui.memCombo_1.currentText())
+            self.ui.memList_1.setColumnCount(2)
+            self.ui.memList_1.setRowCount(10)
+            self.ui.memList_1.setItem(0, 0, QTableWidgetItem("TEXT"))
+
         def loadtable2():
             print(self.ui.memCombo_2.currentText())
+
         self.ui.memCombo_1.currentIndexChanged.connect(loadtable1)
         self.ui.memCombo_2.currentIndexChanged.connect(loadtable2)
 
         def setcacheonoff():
-            print(self.ui.cacheOn.isChecked())
+            if(self.ui.cacheOn.isChecked()):
+
         self.ui.cacheOn.stateChanged.connect(setcacheonoff)
         def setpipelineonoff():
             print(self.ui.pipelineOn.isChecked())
