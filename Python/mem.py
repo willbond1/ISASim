@@ -270,10 +270,12 @@ class Memory:
             self.sets[index].LRU_incr(hit_block)
             hit_block.dirty = True
             self.f_cpu.clock += 1
+            return word
 
         else:
             self.timers[addr] += 1
             self.f_cpu.clock += 1
+            return None
 
     # read until it goes through
     def read_complete(self, addr):
