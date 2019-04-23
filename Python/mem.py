@@ -29,6 +29,7 @@ class Line:
     def display(self):
         print('Tag: ', hex(self.tag), ' Age: ', self.age, ' Line: ', end='')
         print(' '.join('{:02x}'.format(x) for x in self.mem_array))
+        print(id(self.mem_array))
 
     def RAM_display(self, addr):
         print(hex(addr), '   ', end='')
@@ -37,7 +38,9 @@ class Line:
 # represents single set which contains multiple lines
 class Set:
     def __init__(self, ways, words, is_ram):
-        self.lines = [Line(words, is_ram)] * ways
+        self.lines=[]
+        for i in range(ways):
+            self.lines += [Line(words, is_ram)]
         if is_ram:
             for i in range(len(self.lines)):
                 self.lines[i].tag = i
@@ -90,6 +93,9 @@ class Set:
         for line in self.lines:
             line.display()
 
+    def RAM_display(self, index):
+        self.lines[0].RAM_display(index)
+
 # generic memory class
 class Memory:
     timers = {}
@@ -108,7 +114,9 @@ class Memory:
         self.word_n = self.line_length // CPU.word_size # words per line
         self.offset_n = ceil(log(self.word_n, 2)) # number of bits in offset field
         self.tag_n = (CPU.word_size * 8) - (self.offset_n + self.index_n) # number of bits in tag field
-        self.sets = [Set(self.ways, self.word_n, is_ram)] * self.set_n # create list of sets
+        self.sets = []
+        for i in range(self.set_n):
+            self.sets += [Set(self.ways, self.word_n, is_ram)] # create list of sets
 
     def set_CPU(self, processor):
         self.f_cpu = processor
@@ -117,11 +125,11 @@ class Memory:
         self.next_level = next_level
 
     def decode_index(self, addr):
-        mask = (self.set_n - 1) << self.offset_n
+        mask = ((self.set_n - 1) << self.offset_n)
         return ((addr & mask) >> self.offset_n)
     
     def decode_tag(self, addr):
-        mask = ((2 ** self.tag_n) - 1) << (self.offset_n + self.index_n)
+        mask = (((2 ** self.tag_n) - 1) << (self.offset_n + self.index_n)) & 0xffffffff
         return ((addr & mask) >> (self.offset_n + self.index_n))
     
     def decode_offset(self, addr):
@@ -149,7 +157,7 @@ class Memory:
     
     # display [size] sets of memory starting at [addr]
     def display(self, addr, size):
-        index = index(addr)
+        index = self.decode_index(addr)
         if (index + size) > self.set_n:
             print('Out of range')
             return
@@ -301,12 +309,13 @@ class RAM(Memory):
     
     # display [size] lines of RAM starting at [addr]
     def display(self, addr, size):
-        index = index(addr)
+        index = self.decode_index(addr)
         if (index + size) > self.set_n:
             print('Out of range')
             return
         for i in range(index, (index + size)):
-            self.sets[i].RAM_display(i)
+            self.sets[i].RAM_display((addr + (i*self.line_length))-((addr + (i*self.line_length))%(self.line_length)))
+
 
 from math import ceil, log
 from cpu import CPU
