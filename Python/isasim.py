@@ -1,5 +1,5 @@
-from .mem import Cache, RAM
-from .cpu import CPU
+from mem import Cache, RAM
+from cpu import CPU
 
 def main():
     processor = CPU()

@@ -1,5 +1,20 @@
 import struct
 
+'''
+TO DO:
+1. Add used_regs list (for register checking)
+2. Change tuples to lists (for forwarding)
+3. Modify memory accesses to be in realtime
+4. Have fetch/memory stages return None for memory access in progress, non-None for completed
+'''
+
+# fetch stage: store next fetched instruction
+# decode stage: store decoded instruction fields
+# execute stage: store result of instruction execution
+# memory stage: store result to be written back after memory operation
+# writeback stage: store result of writeback
+# forwarding register: dict that stores writeback values before writeback (register number -> value)
+
 # register constants for convenience
 SP = 13
 LR = 14
@@ -13,8 +28,14 @@ class CPU:
         self.Z = False
         self.C = False
         self.V = False
-        self.clock = 0
+
         self.registers = [empty_reg] * 16
+        self.forward_register = {}
+
+        self.memory_fetching = False
+        self.memory_accessing = False # to ensure only one step can access memory at a time
+
+        self.clock = 0
         self.memory = None
 
         # pipeline
@@ -99,13 +120,24 @@ class CPU:
 
     # grab next instruction from memory
     def fetch(self, active_memory):
-        next_inst = active_memory.read_complete(self.registers[PC])
-        self.registers[PC] += 4
-        next_inst = int.from_bytes(next_inst, byteorder='big', signed=False) # convert from bytearray to int
-        return next_inst & word_mask
+        if not self.memory_accessing: # if there is not a memory operation accessing memory
+            next_inst = active_memory.read(self.registers[PC])
+            if next_inst: # memory read completed
+                self.memory_fetching = False
+                self.registers[PC] += 4
+                next_inst = int.from_bytes(next_inst, byteorder='big', signed=False) # convert from bytearray to int
+                return next_inst & word_mask
+            else:
+                self.memory_fetching = True
+                return None
+        else:
+            return None
     
-    # decode instruction in fetch_stage and return instruction fields as tuple
+    # decode instruction in fetch_stage and return instruction fields as list
     def decode(self):
+        if self.fetch_stage == 0: # end instruction
+            return 0
+
         cond_code = (self.fetch_stage & 0xF0000000) >> 28
         inst_code = (self.fetch_stage & 0xC000000) >> 26
 
@@ -172,30 +204,46 @@ class CPU:
         elif inst_code == 2: # Control operation
             return decode_control()
         elif inst_code == 3: # No op
-            return (empty_stage,)
+            return (0, 3)
         else:
             print('Error decoding instruction')
-            return (None,)
+            return (empty_stage,)
 
     # execute instruction in decode_stage
     def execute(self):
-        cond_code = self.execute_control[0]
-        inst_code = self.execute_control[1]
+        if self.decode_stage == 0:
+            return 0
+
+        cond_code = self.decode[0]
+        inst_code = self.decode[1]
 
         def execute_ALU():
-            I, opcode, S, rd, ro = self.execute_control[2:7]
-            ro = self.registers[ro] & word_mask
-            
+            I, opcode, S, rd, ro = self.decode[2:7]
+            if ro in self.forward_register: # there is a forwarding value
+                ro = self.forward_register[ro]
+            else: # register not in dict, so current written back value is safe to use
+                ro = self.registers[ro] & word_mask
+
             if I == 0:
-                shift_type, T, ro2 = self.execute_control[8:]
+                shift_type, T, ro2 = self.decode[8:]
+                if ro2 in self.forward_register:
+                    ro2 = self.forward_register[ro2]
+                else:
+                    ro2 = self.registers[ro2] & word_mask
+                
                 if T == 0:
-                    shift_immediate = self.execute_control[7]
+                    shift_immediate = self.decode[7]
                     ro2, last_bit = self.shifter(ro2, shift_immediate, shift_type)
                 else:
-                    rs = self.execute_control[7]
-                    ro2, last_bit = self.shifter(ro2, self.registers[rs], shift_type)
+                    rs = self.decode[7]
+                    if rs in self.forward_register:
+                        rs = self.forward_register[rs]
+                    else:
+                        rs = self.registers[rs] & word_mask
+                    
+                    ro2, last_bit = self.shifter(ro2, rs, shift_type)
             else:
-                rotation, operand_immediate = self.execute_control[7:]
+                rotation, operand_immediate = self.decode[7:]
                 operand_immediate = self.extend(operand_immediate, False)
                 ro2, last_bit = self.shifter(operand_immediate, (rotation * 2), 3)
             
@@ -262,22 +310,33 @@ class CPU:
                     self.C = (abs(result) > abs(trunc_result))
                 else:
                     self.C = bool(last_bit)
-            
+
             if written:
+                self.forward_register[rd] = result & word_mask # record result in forwarding register
                 return result & word_mask
             else:
-                return None
+                return empty_stage
         
         # returns a tuple consisting of the address to use for the memory access and the address to store in register
         def execute_memory():
-            I, P, U, W, L, rn, rd = self.execute_control[2:9]
+            I, P, U, W, L, rn, rd = self.decode[2:9]
             if I == 0:
-                offset = self.execute_control[9]
+                offset = self.decode[9]
             else:
                 offset_shift, shift_type, ro = self.execute_control[9:]
-                offset = self.shifter(self.registers[ro], offset_shift, shift_type)
+                if ro in self.forward_register:
+                    ro = self.forward_register[ro]
+                else:
+                    ro = self.registers[ro] & word_mask
+
+                offset = self.shifter(ro, offset_shift, shift_type)
             
-            before_addr = self.registers[rn]
+            if rn in self.forward_register:
+                rn = self.forward_register[rn]
+            else:
+                rn = self.registers[rn] & word_mask
+
+            before_addr = rn
             if U == 0: # how is offset applied?
                 after_addr = before_addr - offset
             else:
@@ -288,10 +347,11 @@ class CPU:
             else:
                 use_addr = after_addr
             
-            if W == 0: # writeback?
-                reg_addr = None
+            if W == 0 or L == 1: # writeback (only write back address on store since read always writes back memory value)
+                reg_addr = 0
             else:
                 reg_addr = after_addr
+                self.forward_register[rd] = reg_addr
         
             return (use_addr, reg_addr)
 
@@ -303,11 +363,16 @@ class CPU:
                 target = self.registers[PC] + offset
             else:
                 ra = self.execute_control[4]
-                target = self.registers[ra]
+                if ra in self.forward_register:
+                    ra = self.forward_register[ra]
+                else:
+                    ra = self.registers[ra] & word_mask
+                target = ra
             
             if L:
                 self.registers[LR] = self.registers[PC] - 4
             
+            # flush first two stages since branch is taken
             self.fetch_stage = empty_stage
             self.decode_stage = empty_stage
             self.registers[PC] = target
@@ -321,54 +386,90 @@ class CPU:
             elif inst_code == 2:
                 return execute_control()
             elif inst_code == 3:
-                return None
+                return empty_stage
             else:
                 print('Error executing instruction')
-                return None
+                return empty_stage
         else:
-            # flush pipeline
-            self.fetch_stage = empty_stage
-            self.decode_stage = empty_stage
-            self.registers[PC] -= 4 # rewind PC to instruction after this one
-            return None
+            return empty_stage
 
     # if instruction is a memory instruction, perform operation using use address
     # returns write address
     def memory_inst(self, active_memory):
+        if self.execute_stage == 0:
+            return 0
+
         inst_code = self.memory_control[1]
         if inst_code == 1:
             use_addr, write_addr = self.execute_stage
             L = self.memory_control[6]
+            W = self.memory_control[5]
             rd = self.memory_control[8]
 
-            if L == 0:
-                active_memory.write_complete(use_addr, self.registers[rd].to_bytes(4, byteorder='big'))
-            else:
-                self.registers[rd] = active_memory.read_complete(use_addr)
-                self.registers[rd] = int.from_bytes(self.registers[rd], byteorder='big')
-            
-            return write_addr
+            if L == 0: # L is 0 for write
+                if not self.memory_fetching: # check if memory is busy with fetching instruction
+                    self.memory_accessing = True
+                    if rd in self.forward_register:
+                        rd = self.forward_register[rd]
+                    else:
+                        rd = self.registers[rd] & word_mask
+
+                    if active_memory.write(use_addr, rd.to_bytes(4, byteorder='big')): # write went through, so memory is freed up
+                        self.memory_accessing = False
+                        if W: # W == 1 for writeback
+                            return write_addr
+                        else:
+                            return empty_stage
+                    else: # still writing
+                        return None
+                else: # can't write
+                    self.memory_accessing = False
+                    return None
+
+            else: # handle read
+                if not self.memory_fetching:
+                    self.memory_accessing = True
+                    read_word = active_memory.read(use_addr)
+
+                    if read_word: # read went through
+                        self.memory_accessing = False
+                        self.forward_register[rd] = read_word
+                        if W:
+                            return read_word
+                        else:
+                            return empty_stage
+                    else:
+                        return None
+                else:
+                    self.memory_accessing = False
+                    return None
+
         else: # instruction is not memory access, so execute stage simply contains operation result
             return self.execute_stage
 
     # write instruction result to destination register (if there is one) handling different instruction types
     def writeback(self):
-        if self.memory_stage:
+        if self.memory_stage == 0:
+            return 0
+        
+        if self.memory_stage != empty_stage: # indicates writeback
             inst_code = self.writeback_control[1]
             if inst_code == 0:
                 rd = self.writeback_control[5]
             elif inst_code == 1:
                 rd = self.writeback_control[8]
             elif (inst_code == 2) or (inst_code == 3): # control and no-op instructions don't write back
-                return None
+                return empty_stage
             else:
                 print('Error finding destination register in writeback stage')
-                return  
+                return empty_stage
 
             self.registers[rd] = self.memory_stage
+            self.forward_register.pop(rd, None) # remove register from forwarding register since writeback has completed
             return self.memory_stage
-        else: # value to write back is None, indicating no writeback
-            return None
+
+        else: # value to write back is empty_stage, indicating no writeback
+            return empty_stage
 
     # step pipeline, returns true if program is continuing, false if ended
     def step(self, with_cache, with_pipe):
@@ -396,16 +497,20 @@ class CPU:
 
         memory_block = (self.execute_stage == empty_stage or self.memory_stage != empty_stage or self.execute_control == empty_reg or self.memory_control != empty_reg)
         if not memory_block: # move from execute to memory stage
-            self.memory_control = self.execute_control
-            self.memory_stage = self.memory_inst(active_memory)
-            self.execute_control = empty_reg
-            self.execute_stage = empty_stage
+            mem_result = self.memory_inst(active_memory) # attempt memory instruction
+            if mem_result != None:
+                self.memory_control = self.execute_control
+                self.memory_stage = mem_result
+                self.execute_control = empty_reg
+                self.execute_stage = empty_stage
         
         execute_block = (self.decode_stage == empty_stage or self.execute_stage != empty_stage or self.execute_control != empty_reg)
         if not execute_block: # move from decode to control registers/execute stage
-            self.execute_control = self.decode_stage
-            self.execute_stage = self.execute()
-            self.decode_stage = empty_stage
+            exe_result = self.execute() # attempt execution
+            if exe_result != None:
+                self.execute_control = self.decode_stage
+                self.execute_stage = exe_result
+                self.decode_stage = empty_stage
         
         decode_block = (self.fetch_stage == empty_stage or self.decode_stage != empty_stage)
         if not decode_block: # move from fetch to decode stage
@@ -413,7 +518,9 @@ class CPU:
             self.fetch_stage = empty_stage
         
         if not fetch_block: # move instruction from memory to fetch stage
-            self.fetch_stage = self.fetch(active_memory)
+            next_inst = self.fetch(active_memory)
+            if next_inst != None:
+                self.fetch_stage = next_inst
         
         return True
     
