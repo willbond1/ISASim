@@ -3,7 +3,10 @@ import cpu
 
 breaks = []
 
-help = "FL filename: load a file into memory", "LM addr: load value into memory", "RM word addr: read value from memory", "DM mem_level start size: view memory level", "S: Step instruction",
+help = ["FL filename: load a file into memory", "LM addr: load value into memory",
+        "RM word addr: read value from memory", "DM mem_level start size: view memory level", "ST: Step instruction", "DC: Display CPU", "BR addr: add a breakpoint at addr", "CM addr: run until addr"]
+for line in help:
+    print(line)
 input_string = input()
 while input_string != "exit":
     input_string = input_string.upper().split()
@@ -19,10 +22,10 @@ while input_string != "exit":
         sim.processor.write(final, 0xfffffff0.to_bytes(cpu.CPU.word_size, byteorder="big"))
     # LOAD MEMORY
     elif input_string[0] == "LM":
-        sim.processor.write(int(input_string[2]), (int(input_string[1]).to_bytes(cpu.CPU.word_size, byteorder="little")))
+        sim.processor.write(int(input_string[2]), (int(input_string[1]).to_bytes(cpu.CPU.word_size, byteorder="big")))
     # READ MEMORY
     elif input_string[0] == "RM":
-        print(int.from_bytes(sim.processor.read(int(input_string[1])), byteorder="little"))
+        print(int.from_bytes(sim.processor.read(int(input_string[1])), byteorder="big"))
     # DISPLAY MEMORY
     elif input_string[0] == "DM":
         mem_level = sim.processor.memory
