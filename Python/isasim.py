@@ -3,8 +3,8 @@ from cpu import CPU
 
 
 processor = CPU()
-l1_cache = Cache(4, 8, 32*32, 32)
-ram = RAM(100, 64*32, 32)
+l1_cache = Cache(4, 2, 64, 32)
+ram = RAM(100, 8*32, 32)
 
 processor.set_memory(l1_cache)
 l1_cache.set_next_level(ram)

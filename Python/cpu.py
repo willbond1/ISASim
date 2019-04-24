@@ -30,6 +30,7 @@ class CPU:
         self.V = False
 
         self.registers = [empty_reg] * 16
+        self.registers[PC] = 0
         self.forward_register = {}
 
         self.memory_fetching = False
@@ -49,6 +50,28 @@ class CPU:
         self.execute_control = empty_reg
         self.memory_control = empty_reg
         self.writeback_control = empty_reg
+
+
+    def display_cpu(self):
+        for i in range(13):
+          print("Contents of register ", i, ": " , self.registers[i])
+
+        print("Contents of PC: ", self.registers[PC])
+        print("Contents of LR: ", self.registers[LR])
+        print("Contents of SP: ", self.registers[SP], "\n")
+
+        print("N flag: ", self.N)
+        print("Z flag: ", self.Z)
+        print("C flag: ", self.C)
+        print("V flag: ", self.V, "\n")
+
+        print("Pipeline contents:")
+        print("Fetch step: ", self.fetch_stage)
+        print("Decode step: ", self.decode_stage)
+        print("Execute step: ", self.execute_stage)
+        print("Memory step: ", self.memory_stage)
+        print("Writeback step: ", self.writeback_stage)
+
 
     def set_memory(self, memory):
         self.memory = memory
@@ -124,7 +147,7 @@ class CPU:
             next_inst = active_memory.read(self.registers[PC])
             if next_inst: # memory read completed
                 self.memory_fetching = False
-                self.registers[PC] += 4
+                self.registers[PC] += 1
                 next_inst = int.from_bytes(next_inst, byteorder='big', signed=False) # convert from bytearray to int
                 return next_inst & word_mask
             else:
@@ -214,28 +237,28 @@ class CPU:
         if self.decode_stage == 0:
             return 0
 
-        cond_code = self.decode[0]
-        inst_code = self.decode[1]
+        cond_code = self.decode_stage[0]
+        inst_code = self.decode_stage[1]
 
         def execute_ALU():
-            I, opcode, S, rd, ro = self.decode[2:7]
+            I, opcode, S, rd, ro = self.decode_stage[2:7]
             if ro in self.forward_register: # there is a forwarding value
                 ro = self.forward_register[ro]
             else: # register not in dict, so current written back value is safe to use
                 ro = self.registers[ro] & word_mask
 
             if I == 0:
-                shift_type, T, ro2 = self.decode[8:]
+                shift_type, T, ro2 = self.decode_stage[8:]
                 if ro2 in self.forward_register:
                     ro2 = self.forward_register[ro2]
                 else:
                     ro2 = self.registers[ro2] & word_mask
                 
                 if T == 0:
-                    shift_immediate = self.decode[7]
+                    shift_immediate = self.decode_stage[7]
                     ro2, last_bit = self.shifter(ro2, shift_immediate, shift_type)
                 else:
-                    rs = self.decode[7]
+                    rs = self.decode_stage[7]
                     if rs in self.forward_register:
                         rs = self.forward_register[rs]
                     else:
@@ -243,7 +266,7 @@ class CPU:
                     
                     ro2, last_bit = self.shifter(ro2, rs, shift_type)
             else:
-                rotation, operand_immediate = self.decode[7:]
+                rotation, operand_immediate = self.decode_stage[7:]
                 operand_immediate = self.extend(operand_immediate, False)
                 ro2, last_bit = self.shifter(operand_immediate, (rotation * 2), 3)
             
@@ -319,9 +342,9 @@ class CPU:
         
         # returns a tuple consisting of the address to use for the memory access and the address to store in register
         def execute_memory():
-            I, P, U, W, L, rn, rd = self.decode[2:9]
+            I, P, U, W, L, rn, rd = self.decode_stage[2:9]
             if I == 0:
-                offset = self.decode[9]
+                offset = self.decode_stage[9]
             else:
                 offset_shift, shift_type, ro = self.execute_control[9:]
                 if ro in self.forward_register:
@@ -355,7 +378,7 @@ class CPU:
         
             return (use_addr, reg_addr)
 
-        def execute_control():
+        def execute_control_method():
             I, L = self.execute_control[2:4]
             if I:
                 offset = self.execute_control[4]
@@ -370,7 +393,7 @@ class CPU:
                 target = ra
             
             if L:
-                self.registers[LR] = self.registers[PC] - 4
+                self.registers[LR] = self.registers[PC] - 1
             
             # flush first two stages since branch is taken
             self.fetch_stage = empty_stage
@@ -378,13 +401,13 @@ class CPU:
             self.registers[PC] = target
             return target
         
-        if cond(cond_code):
+        if self.cond(cond_code):
             if inst_code == 0:
                 return execute_ALU()
             elif inst_code == 1:
                 return execute_memory()
             elif inst_code == 2:
-                return execute_control()
+                return execute_control_method()
             elif inst_code == 3:
                 return empty_stage
             else:
