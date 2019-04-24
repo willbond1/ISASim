@@ -177,7 +177,9 @@ class Memory:
                 if hit_block.dirty:
                     old_tag, old_data = hit_block.read_block()
                     old_addr = self.encode(old_tag, index, 0)
-                    self.next_level.write_block_complete(old_addr, old_data)
+                    if not self.next_level.write_block(old_addr, old_data):
+                        return None
+                    hit_block.dirty = False
 
             hit_block.write_block(block)
             hit_block.tag = tag
@@ -185,8 +187,11 @@ class Memory:
             hit_block.age = 0
             hit_block.dirty = True
             self.timers[addr] = 0
+            return block
+
         else:
             self.timers[addr] += 1
+            return None
 
     def read_block(self, addr):
         if self.timers.setdefault(addr, 0) == self.latency:
@@ -200,18 +205,23 @@ class Memory:
                 if hit_block.dirty:
                     old_tag, old_data = hit_block.read_block()
                     old_addr = self.encode(old_tag, index, 0)
-                    self.next_level.write_block_complete(old_addr, old_data)
+                    if not self.next_level.write_block(old_addr, old_data):
+                        return None
+                    hit_block.dirty = False
 
-                new_tag, new_data = copy.deepcopy(self.next_level.read_block_complete(addr))
+                next_read = self.next_level.read_block(addr)
+                if not next_read:
+                    return None
+                new_tag, new_data = copy.deepcopy(next_read)
                 hit_block.write_block(new_data)
                 hit_block.tag = tag
                 hit_block.dirty = False
 
             hit_block.age = 0
             self.sets[index].LRU_incr(hit_block)
-
             self.timers[addr] = 0
             return hit_block.read_block()
+
         else:
             self.timers[addr] += 1
             return None
@@ -229,16 +239,21 @@ class Memory:
                 if hit_block.dirty:
                     old_tag, old_data = hit_block.read_block()
                     old_addr = self.encode(old_tag, index, 0)
-                    self.next_level.write_block_complete(old_addr, old_data)
+                    if not self.next_level.write_block(old_addr, old_data):
+                        return None
+                    hit_block.dirty = False
                 
-                new_tag, new_data = copy.deepcopy(self.next_level.read_block_complete(addr))
+                next_read = self.next_level.read_block(addr)
+                if not next_read:
+                    return None
+                new_tag, new_data = copy.deepcopy(next_read)
                 hit_block.write_block(new_data)
                 hit_block.tag = tag
                 hit_block.dirty = False
+
             self.timers[addr] = 0
             hit_block.age = 0
             self.sets[index].LRU_incr(hit_block)
-            self.f_cpu.clock += 1
             return hit_block.read(offset)
 
         else:
@@ -249,7 +264,6 @@ class Memory:
     # word is a bytearray
     def write(self, addr, word):
         if self.timers.setdefault(addr, 0) == self.latency:
-
             tag = self.decode_tag(addr)
             offset = self.decode_offset(addr)
             index = self.decode_index(addr)
@@ -260,9 +274,14 @@ class Memory:
                 if hit_block.dirty:
                     old_tag, old_data = hit_block.read_block()
                     old_addr = self.encode(old_tag, index, 0)
-                    self.next_level.write_block_complete(old_addr, old_data)
+                    if not self.next_level.write_block(old_addr, old_data):
+                        return None
+                    hit_block.dirty = False
                 
-                new_tag, new_data = copy.deepcopy(self.next_level.read_block_complete(addr))
+                next_read = self.next_level.read_block(addr)
+                if not next_read:
+                    return None
+                new_tag, new_data = copy.deepcopy(next_read)
                 hit_block.write_block(new_data)
                 hit_block.tag = tag
                 hit_block.dirty = False
@@ -280,30 +299,15 @@ class Memory:
 
     # read until it goes through
     def read_complete(self, addr):
-        while self.timers.setdefault(addr, 0) < self.latency:
-            self.f_cpu.clock += 1
-            data = self.read(addr)
-        return self.read(addr)
+        read_word = self.read(addr)
+        while not read_word:
+            read_word = self.read(addr)
+        return read_word
     
     # attempt write until it goes through
     def write_complete(self, addr, word):
-        while self.timers.setdefault(addr, 0) < self.latency:
-            self.write(addr, word)
-            self.f_cpu.clock += 1
-        self.write(addr, word)
-
-        # attempt write until it goes through
-    def write_block_complete(self, addr, word):
-        while self.timers.setdefault(addr, 0) < self.latency:
-            self.write_block(addr, word)
-            self.f_cpu.clock += 1
-        self.write_block(addr, word)
-
-    def read_block_complete(self, addr):
-        while self.timers.setdefault(addr, 0) < self.latency:
-            data = self.read_block(addr)
-            self.f_cpu.clock += 1
-        return self.read_block(addr)
+        while not self.write(addr, word):
+            pass
 
 # cache class
 class Cache(Memory):
