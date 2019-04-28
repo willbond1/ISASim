@@ -1,13 +1,3 @@
-import struct
-
-'''
-TO DO:
-1. Add used_regs list (for register checking)
-2. Change tuples to lists (for forwarding)
-3. Modify memory accesses to be in realtime
-4. Have fetch/memory stages return None for memory access in progress, non-None for completed
-'''
-
 # fetch stage: store next fetched instruction
 # decode stage: store decoded instruction fields
 # execute stage: store result of instruction execution
@@ -50,7 +40,6 @@ class CPU:
         self.execute_control = empty_reg
         self.memory_control = empty_reg
         self.writeback_control = empty_reg
-
 
     def display_cpu(self):
         for i in range(13):
@@ -147,7 +136,7 @@ class CPU:
             next_inst = active_memory.read(self.registers[PC])
             if next_inst: # memory read completed
                 self.memory_fetching = False
-                self.registers[PC] += 1
+                self.registers[PC] += 4
                 next_inst = int.from_bytes(next_inst, byteorder='big', signed=False) # convert from bytearray to int
                 return next_inst & word_mask
             else:
@@ -548,10 +537,10 @@ class CPU:
         return True
     
     def read(self, addr):
-        return self.memory.read_complete(addr)
+        return int.from_bytes(self.memory.read_complete(addr), byteorder='big')
     
     def write(self, addr, word):
-        self.memory.write_complete(addr, word)
+        self.memory.write_complete(addr, word.to_bytes(4, byteorder='big'))
 
 empty_stage = word_mask = int(('FF' * CPU.word_size), 16)
 empty_reg = int(('00' * CPU.word_size), 16)
