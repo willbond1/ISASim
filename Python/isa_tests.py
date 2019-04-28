@@ -3,6 +3,8 @@ import unittest
 from cpu import CPU
 from mem import Cache, RAM
 
+empty_stage = word_mask = int(('FF' * CPU.word_size), 16)
+
 class TestISA(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(TestISA, self).__init__(*args, **kwargs)
@@ -83,7 +85,44 @@ class TestISA(unittest.TestCase):
         self.assertEqual(decoded_inst, self.f_cpu.decode())
     
     def test_execute(self):
-        pass
+        # memory instructions
+        self.f_cpu.registers[6] = 0x20
+        self.f_cpu.registers[10] = 56
+        inst = 0b11100100100011010100000000000010
+        self.f_cpu.fetch_stage = inst
+        self.f_cpu.decode_stage = self.f_cpu.decode()
+        self.assertEqual(self.f_cpu.execute(), (0x20, 0))
+
+        inst = 0b11100101000011010100000000000010
+        self.f_cpu.fetch_stage = inst
+        self.f_cpu.decode_stage = self.f_cpu.decode()
+        self.assertEqual(self.f_cpu.execute(), (0x1E, 0))
+
+        inst = 0b11100101100011010100000000000010
+        self.f_cpu.fetch_stage = inst
+        self.f_cpu.decode_stage = self.f_cpu.decode()
+        self.assertEqual(self.f_cpu.execute(), (0x22, 0))
+
+        inst = 0b11100101110011010100000000000010
+        self.f_cpu.fetch_stage = inst
+        self.f_cpu.decode_stage = self.f_cpu.decode()
+        self.assertEqual(self.f_cpu.execute(), (0x22, 0x22))
+
+        # control instructions
+        self.f_cpu.registers[15] = 0x10
+        inst = 0b11101011000000000000000000000010
+        self.f_cpu.fetch_stage = inst
+        self.f_cpu.decode_stage = self.f_cpu.decode()
+        self.assertEqual(self.f_cpu.execute(), 0x18)
+        self.assertEqual(self.f_cpu.fetch_stage, empty_stage)
+        self.assertEqual(self.f_cpu.decode_stage, empty_stage)
+        self.assertEqual(self.f_cpu.registers[14], 0xC)
+
+        
+        inst = 0b00001010111111111111111111111011
+        self.f_cpu.fetch_stage = inst
+        self.f_cpu.decode_stage = self.f_cpu.decode()
+
 
 if __name__ == '__main__':
     unittest.main()
