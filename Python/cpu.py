@@ -1,13 +1,3 @@
-import struct
-
-'''
-TO DO:
-1. Add used_regs list (for register checking)
-2. Change tuples to lists (for forwarding)
-3. Modify memory accesses to be in realtime
-4. Have fetch/memory stages return None for memory access in progress, non-None for completed
-'''
-
 # fetch stage: store next fetched instruction
 # decode stage: store decoded instruction fields
 # execute stage: store result of instruction execution
@@ -50,7 +40,6 @@ class CPU:
         self.execute_control = empty_reg
         self.memory_control = empty_reg
         self.writeback_control = empty_reg
-
 
     def display_cpu(self):
         for i in range(13):
@@ -130,16 +119,12 @@ class CPU:
         
         return (result, last_bit)
 
-    # extend val with sign if sign is true, with 0 if false
-    def extend(self, val, sign, word_length=32):
-        bits = bin(val)[2:]
-        bit_len = val.bit_len()
-        if sign:
-            prefix = bits[0] * (word_length - bit_len)
-        else:
-            prefix = '0' * (word_length - bit_len)
-        
-        return int(prefix + bits) & word_mask
+    # interpret binary as signed integer
+    def as_signed(self, val):
+        word_size_bits = 8 * CPU.word_size
+        max_val = (2 ** word_size_bits) - 1 # max unsigned value
+        signed_max = (2 ** (word_size_bits - 1)) - 1 # max signed value
+        return (val - max_val) if (val > signed_max) else val
 
     # grab next instruction from memory
     def fetch(self, active_memory):
@@ -147,7 +132,7 @@ class CPU:
             next_inst = active_memory.read(self.registers[PC])
             if next_inst: # memory read completed
                 self.memory_fetching = False
-                self.registers[PC] += 1
+                self.registers[PC] += 4
                 next_inst = int.from_bytes(next_inst, byteorder='big', signed=False) # convert from bytearray to int
                 return next_inst & word_mask
             else:
@@ -379,13 +364,13 @@ class CPU:
             return (use_addr, reg_addr)
 
         def execute_control_method():
-            I, L = self.execute_control[2:4]
+            I, L = self.decode_stage[2:4]
             if I:
-                offset = self.execute_control[4]
-                offset = self.extend((offset << 2), True)
+                offset = self.decode_stage[4]
+                offset = self.as_signed(offset << 2)
                 target = self.registers[PC] + offset
             else:
-                ra = self.execute_control[4]
+                ra = self.decode_stage[4]
                 if ra in self.forward_register:
                     ra = self.forward_register[ra]
                 else:
@@ -393,7 +378,7 @@ class CPU:
                 target = ra
             
             if L:
-                self.registers[LR] = self.registers[PC] - 1
+                self.registers[LR] = self.registers[PC] - 4
             
             # flush first two stages since branch is taken
             self.fetch_stage = empty_stage
@@ -548,10 +533,10 @@ class CPU:
         return True
     
     def read(self, addr):
-        return self.memory.read_complete(addr)
+        return int.from_bytes(self.memory.read_complete(addr), byteorder='big')
     
     def write(self, addr, word):
-        self.memory.write_complete(addr, word)
+        self.memory.write_complete(addr, word.to_bytes(4, byteorder='big'))
 
 empty_stage = word_mask = int(('FF' * CPU.word_size), 16)
 empty_reg = int(('00' * CPU.word_size), 16)

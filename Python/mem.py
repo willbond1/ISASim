@@ -11,7 +11,7 @@ class Line:
         self.empty = (not is_ram)
 
     def write(self, word, offset):
-        self.mem_array[offset*4 : (offset*4 + CPU.word_size)] = word
+        self.mem_array[offset : (offset + CPU.word_size)] = word
         self.empty = False
     
     def write_block(self, words):
@@ -19,7 +19,7 @@ class Line:
         self.empty = False
     
     def read(self, offset):
-        return self.mem_array[offset*4 : (offset*4 + CPU.word_size)]
+        return self.mem_array[offset : (offset + CPU.word_size)]
     
     def read_block(self):
         return (self.tag, self.mem_array)
@@ -300,7 +300,7 @@ class Memory:
     # read until it goes through
     def read_complete(self, addr):
         read_word = self.read(addr)
-        while read_word is None:
+        while not read_word:
             read_word = self.read(addr)
         return read_word
     
@@ -327,7 +327,6 @@ class RAM(Memory):
             return
         for i in range(index, (index + size)):
             self.sets[i].RAM_display((addr + (i*self.line_length))-((addr + (i*self.line_length))%(self.line_length)))
-
 
 from math import ceil, log
 from cpu import CPU
