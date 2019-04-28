@@ -120,10 +120,9 @@ class CPU:
         return (result, last_bit)
 
     # interpret binary as signed integer
-    def as_signed(self, val):
-        word_size_bits = 8 * CPU.word_size
-        max_val = (2 ** word_size_bits) - 1 # max unsigned value
-        signed_max = (2 ** (word_size_bits - 1)) - 1 # max signed value
+    def as_signed(self, val, bit_len=26):
+        max_val = (2 ** bit_len) # max unsigned value
+        signed_max = (2 ** (bit_len - 1)) - 1 # max signed value
         return (val - max_val) if (val > signed_max) else val
 
     # grab next instruction from memory

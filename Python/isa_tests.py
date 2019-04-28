@@ -118,11 +118,13 @@ class TestISA(unittest.TestCase):
         self.assertEqual(self.f_cpu.decode_stage, empty_stage)
         self.assertEqual(self.f_cpu.registers[14], 0xC)
 
-        
-        inst = 0b00001010111111111111111111111011
+        self.f_cpu.Z = True
+        self.f_cpu.registers[15] = 0x18
+        inst = 0b00001010111111111111111111111010
         self.f_cpu.fetch_stage = inst
         self.f_cpu.decode_stage = self.f_cpu.decode()
-
+        self.assertEqual(self.f_cpu.execute(), 0x0)
+        self.assertEqual(self.f_cpu.registers[14], 0xC)
 
 if __name__ == '__main__':
     unittest.main()
