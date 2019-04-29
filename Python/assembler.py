@@ -1,9 +1,15 @@
 from mem import Cache, RAM
 from cpu import CPU
+import re
 
 
 # noinspection SpellCheckingInspection
 class Assembler:
+    shift_map = {       "LSL": 0b00,
+                        "LSR": 0b01,
+                        "ASR": 0b10,
+                        "ROR": 0b11}
+
     condition_code = {  "EQ": 0b0000,
                         "NE": 0b0001,
                         "CS": 0b0010,
@@ -18,9 +24,11 @@ class Assembler:
                         "LT": 0b1011,
                         "GT": 0b1100,
                         "LE": 0b1101,
-                        "AL": 0b1110}
+                        "AL": 0b1110,
+                        "": 0b1110}
 
     instruction_map = {"MOV": {"instruction_code": 0b00, "opcode": 0b1101},
+                       "BIC": {"instruction_code": 0b00, "opcode": 0b1110},
                        "MVN": {"instruction_code": 0b00, "opcode": 0b1111},
                        "CMP": {"instruction_code": 0b00, "opcode": 0b1010},
                        "CMN": {"instruction_code": 0b00, "opcode": 0b1011},
@@ -35,34 +43,42 @@ class Assembler:
                        "SBC": {"instruction_code": 0b00, "opcode": 0b0110},
                        "RSC": {"instruction_code": 0b00, "opcode": 0b0111},
                        "ORR": {"instruction_code": 0b00, "opcode": 0b1100},
-                       "LDR": {"instruction_code": 0b01, "opcode": 0b0000},
-                       "STR": {"instruction_code": 0b01, "opcode": 0b0000},
-                       "BRX": {"instruction_code": 0b10, "opcode": 0b10},
-                       "BRC": {"instruction_code": 0b10, "opcode": 0b01}}
+                       "LDR": {"instruction_code": 0b01, "opcode": 0b1},
+                       "STR": {"instruction_code": 0b01, "opcode": 0b0},
+                       "BRX": {"instruction_code": 0b10, "opcode": 0b01},
+                       "BRC": {"instruction_code": 0b10, "opcode": 0b10}}
 
-    register_map = {"R1": 0b0001,
-                    "R2": 0b0001,
-                    "R3": 0b0001,
-                    "R4": 0b0001,
-                    "R5": 0b0001,
-                    "R6": 0b0001,
-                    "R7": 0b0001,
-                    "R8": 0b0001,
-                    "R9": 0b0001,
-                    "R10": 0b0001,
-                    "R11": 0b0001,
-                    "R12": 0b0001,
-                    "R13": 0b0001}
+    register_map = {"R0": 0b0000,
+                    "R1": 0b0001,
+                    "R2": 0b0010,
+                    "R3": 0b0011,
+                    "R4": 0b0100,
+                    "R5": 0b0101,
+                    "R6": 0b0110,
+                    "R7": 0b0111,
+                    "R8": 0b1000,
+                    "R9": 0b1001,
+                    "R10": 0b1010,
+                    "R11": 0b1011,
+                    "R12": 0b1100,
+                    "R13": 0b1101}
 
+    offset_regex = re.compile("\[\s*(R\d\d?)\s*,\s*(\S.+)]\Z")
+    pre_regex = re.compile("\[\s*(R\d\d?)\s*,\s*(\S.+)\s*]!\Z")
+    post_regex = re.compile("\[\s*(R\d\d?)\s*\]\s*,\s*(\d+)\Z")
+
+    immediate_regex = re.compile("#(\+|\-)?(\d+)\s*\Z")
+    index_regex = re.compile("(\+|\-)?(R\d\d?)\s*\Z")
+    shifted_index_regex = re.compile("(\+|\-)?(R\d\d?)\s*,\s*(\w{3})\s+#(\d+)\s*\Z")
 
     def __init__(self, file):
         self.symbol_table = {}
         self.file = file
         self.outfile = open("program.txt", "w")
         self.machine_lines = []
-        #for line in open(file, "r"):
-            #self.machine_lines += [self.assemble(line)]
-
+        for line in open(file, "r"):
+            self.machine_lines += [str(bin(self.assemble(line))) + "\n"]
+        self.outfile.writelines(self.machine_lines)
             # decode instruction in fetch_stage and return instruction fields as list
 
 
@@ -81,108 +97,152 @@ class Assembler:
         machine_code |= instruction["instruction_code"] << 26
         machine_code |= instruction["opcode"] << 24
         if instruction["opcode"] == 0b10:
-            machine_code |= link << 23
-            machine_code |= arg
+            machine_code |= link << 24
+            machine_code |= (int(arg) & 0xffffff)
         elif instruction["opcode"] == 0b01:
-            machine_code |= link << 22
-        if arg[0] == "R":
+            machine_code |= link << 23
             machine_code |= self.register_map[arg]
+        return machine_code
 
-    def extend(self, val, sign, word_length=32):
-        bits = bin(val)[2:]
-        bit_len = val.bit_len()
-        if sign:
-            prefix = bits[0] * (word_length - bit_len)
-        else:
-            prefix = '0' * (word_length - bit_len)
 
-        return int(prefix + bits) & word_mask
+    def assemble_memory(self, command, instruction):
+        command = command.strip()
+        condition = 0b1110
+        offset = 0b0
+        tokenized = re.findall("(LDR|STR)(\w{,2})\s*(R\d\d?)\s*,\s*(\S.+)", command)[0]
+        condition = self.condition_code[tokenized[1]]
+        rd = self.register_map[tokenized[2]]
 
+        machine_code = condition << 28
+        machine_code |= instruction["instruction_code"] << 26
+        machine_code |= instruction["opcode"] << 21
+        machine_code |= rd << 13
+
+        op2 = tokenized[3]
+
+        if re.match("R\d\d?\s*\Z", op2):
+            rn = self.register_map[op2]
+            machine_code |= rn << 17
+            machine_code |= 0b1 << 24
+            return machine_code
+
+        offset = 0
+        op2_tokenized = ""
+        if self.offset_regex.match(op2):
+            op2_tokenized = self.offset_regex.findall(op2)[0]
+            machine_code |= 0b1 << 24
+
+            offset = op2_tokenized[1]
+        elif self.pre_regex.match(op2):
+            op2_tokenized = self.pre_regex.findall(op2)[0]
+            machine_code |= 0b1 << 24
+            machine_code |= 0b1 << 22
+
+            offset = op2_tokenized[1]
+        elif self.post_regex.match(op2):
+            op2_tokenized = self.post_regex.findall(op2)[0]
+            machine_code |= 0b1 << 22
+        rn = self.register_map[op2_tokenized[0]]
+        machine_code |= rn << 17
+        offset = op2_tokenized[1]
+        if self.immediate_regex.match(offset):
+            offset_tokenized = self.immediate_regex.findall(offset)[0]
+            if offset_tokenized[0] != "-":
+                machine_code |= 0b1 << 23
+            machine_code |= (int(offset_tokenized[1]) & 0x1fff)
+            return machine_code
+        elif self.index_regex.match(offset):
+            offset_tokenized = self.index_regex.findall(offset)[0]
+            machine_code |= 0b1 << 25
+            if offset_tokenized[0] != "-":
+                machine_code |= 0b1 << 23
+            machine_code |= self.register_map[offset_tokenized[1]]
+            return machine_code
+        elif self.shifted_index_regex.match(offset):
+            offset_tokenized = self.shifted_index_regex.findall(offset)[0]
+            machine_code |= 0b1 << 25
+            if offset_tokenized[0] != "-":
+                machine_code |= 0b1 << 23
+            machine_code |= self.register_map[offset_tokenized[1]]
+            machine_code |= self.shift_map[offset_tokenized[2]] << 6
+            machine_code |= (int(offset_tokenized[3]) & 0b11111) << 8
+            return machine_code
+
+    def assemble_alu(self, command, instruction):
+        command = command.strip()
+        condition = 0b1110
+        offset = 0b0
+
+        mov_regex = re.compile("(MOV|MVN)(\w\w)?(S)?\s+(R\d\d?)\s*,\s*(\S.+)\Z")
+        test_regex = re.compile("(CMP|CMN|TSQ|TST)(\w\w)?\s+(R\d\d?)\s*,\s*(\S.+)\Z")
+        areth_regex = re.compile("(AND|EOR|SUB|RSB|ADD|ADC|SBC|RSC|ORR|BIC)(\w{2})?(S)?\s+(R\d\d?)\s*,\s*(R\d\d?)\s*,\s*(\S.+)\Z")
+        machine_code = 0
+        machine_code |= instruction["instruction_code"] << 21
+        op2 = 0
+        if mov_regex.match(command):
+            tokenized = mov_regex.findall(command)[0]
+            machine_code |= self.condition_code[tokenized[1]] << 28
+            if tokenized[2] == "S":
+                machine_code |= 0b1 << 20
+            machine_code |= self.register_map[tokenized[3]] << 16
+            op2 = tokenized[4]
+        if test_regex.match(command):
+            tokenized = test_regex.findall(command)[0]
+            machine_code |= self.condition_code[tokenized[1]] << 28
+            machine_code |= self.register_map[tokenized[2]] << 12
+            op2 = tokenized[3]
+        if areth_regex.match(command):
+            tokenized = areth_regex.findall(command)[0]
+            machine_code |= self.condition_code[tokenized[1]] << 28
+            if tokenized[2] == "S":
+                machine_code |= 0b1 << 20
+            machine_code |= self.register_map[tokenized[3]] << 16
+            machine_code |= self.register_map[tokenized[4]] << 12
+            op2 = tokenized[5]
+
+        register_only_regex = re.compile("(R\d\d?)\s*\Z")
+        register_shift_regex = re.compile("(R\d\d?)\s*,\s*(\w{3})\s*(\S.*\S)*\Z")
+        immediate_only_regex = re.compile("#(\d+)\s*\Z")
+        expression = re.compile("#(\d+)\s*#(\d+)\Z")
+        register = re.compile("(R\d\d)\s*\Z")
+
+        if register_only_regex.match(op2):
+            op2_tokenized = register_only_regex.findall(op2)[0]
+            machine_code |= self.register_map[op2_tokenized]
+            return machine_code
+        if register_shift_regex.match(op2):
+            op2_tokenized = register_shift_regex.findall(op2)[0]
+            machine_code |= self.register_map[op2_tokenized[0]]
+            machine_code |= self.shift_map[op2_tokenized[1]] << 5
+            if immediate_only_regex.match(op2_tokenized[2]):
+                shift_token = immediate_only_regex.findall(op2_tokenized[2])[0]
+                machine_code |= (int(shift_token) & 0b11111) << 7
+            if register.match(op2_tokenized[2]):
+                shift_token = register_only_regex.findall(op2_tokenized[2])[0]
+                machine_code |= self.register_map[shift_token] << 8
+                machine_code |= 0b1 << 4
+            return machine_code
+        if immediate_only_regex.match(op2):
+            op2_tokenized = immediate_only_regex.findall(op2)[0]
+            machine_code |= int(op2_tokenized)
+            machine_code |= 0b1 << 25
+            return machine_code
+        if expression.match(op2):
+            op2_tokenized = expression.findall(op2)[0]
+            machine_code |= int(op2_tokenized[0]) & 0xff
+            machine_code |= 0b1 << 25
+            machine_code |= (int(op2_tokenized[1]) & 0xf) << 8
+            return machine_code
 
     def assemble(self, command):
         instruction = self.instruction_map[command.split()[0][:3]]
         if instruction["instruction_code"] == 0b10:
             return self.assemble_control(command, instruction)
-        if command.split()[0][3:5] in self.condition_code:
-            condition = self.condition_code[command.split()[0][3:5]]
-
-        instruction = self.instruction_map[command[:3]]
-
-        print( condition )
-
-        # def decode_ALU():
-        #     I = (self.fetch_stage & 0x2000000) >> 25
-        #     opcode = (self.fetch_stage & 0x1E00000) >> 21
-        #     S = (self.fetch_stage & 0x100000) >> 20
-        #     rd = (self.fetch_stage & 0xF0000) >> 16
-        #     ro = (self.fetch_stage & 0xF000) >> 12
-        #
-        #     if I == 0:
-        #         shift_type = (self.fetch_stage & 0x60) >> 5
-        #         T = (self.fetch_stage & 0x10) >> 4
-        #         ro2 = (self.fetch_stage & 0xF)
-        #
-        #         if T == 0:
-        #             shift_immediate = (self.fetch_stage & 0xF80) >> 7
-        #             return (cond_code, inst_code, I, opcode, S, rd, ro, shift_immediate, shift_type, T, ro2)
-        #         else:
-        #             rs = (self.fetch_stage & 0xF00) >> 8
-        #             return (cond_code, inst_code, I, opcode, S, rd, ro, rs, shift_type, T, ro2)
-        #     else:
-        #         rotate = (self.fetch_stage & 0xF00) >> 8
-        #         operand_immediate = (self.fetch_stage & 0xFF)
-        #
-        #         return (cond_code, inst_code, I, opcode, S, rd, ro, rotate, operand_immediate)
-        #
-        # def decode_memory():
-        #     I = (self.fetch_stage & 0x2000000) >> 25
-        #     P = (self.fetch_stage & 0x1000000) >> 24
-        #     U = (self.fetch_stage & 0x800000) >> 23
-        #     W = (self.fetch_stage & 0x400000) >> 22
-        #     L = (self.fetch_stage & 0x200000) >> 21
-        #     rn = (self.fetch_stage & 0x1E0000) >> 17
-        #     rd = (self.fetch_stage & 0x1E000) >> 13
-        #
-        #     if I == 0:
-        #         immediate_offset = (self.fetch_stage & 0x1FFF)
-        #         return (cond_code, inst_code, I, P, U, W, L, rn, rd, immediate_offset)
-        #     else:
-        #         offset_shift = (self.fetch_stage & 0x1F00) >> 8
-        #         shift_type = (self.fetch_stage & 0xC0) >> 6
-        #         ro = (self.fetch_stage & 0xF)
-        #
-        #         return (cond_code, inst_code, I, P, U, W, L, rn, rd, offset_shift, shift_type, ro)
-        #
-        # def decode_control():
-        #     I = (self.fetch_stage & 0x2000000) >> 25
-        #     if I == 0:
-        #         L = (self.fetch_stage & 0x800000) >> 23
-        #         ra = (self.fetch_stage & 0x1F)
-        #
-        #         return (cond_code, inst_code, I, L, ra)
-        #     else:
-        #         L = (self.fetch_stage & 0x1000000) >> 24
-        #         offset = (self.fetch_stage & 0xFFFFFF)
-        #
-        #         return (cond_code, inst_code, I, L, offset)
-        #
-        # if inst_code == 0:  # ALU
-        #     return decode_ALU()
-        # elif inst_code == 1:  # Memory operation
-        #     return decode_memory()
-        # elif inst_code == 2:  # Control operation
-        #     return decode_control()
-        # elif inst_code == 3:  # No op
-        #     return (0, 3)
-        # else:
-        #     print('Error decoding instruction')
-        #     return (empty_stage,)
+        if instruction["instruction_code"] == 0b01:
+            return self.assemble_memory(command, instruction)
+        if instruction["instruction_code"] == 0b00:
+            return self.assemble_alu(command, instruction)
 
 
 
-        
-
-print(Assembler("assembly_program.txt").assemble("BRXL R2"))
-print(Assembler("assembly_program.txt").assemble("BRC R2"))
-print(Assembler("assembly_program.txt").assemble("BRCL R2"))
-print(Assembler("assembly_program.txt").assemble("BRCEQL 1000"))
+Assembler("assembly_program.txt")
