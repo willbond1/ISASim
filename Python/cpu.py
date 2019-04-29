@@ -431,11 +431,11 @@ class CPU:
 
                     if read_word: # read went through
                         self.memory_accessing = False
-                        self.forward_register[rd] = read_word.from_bytes(4, byteorder='big')
+                        self.forward_register[rd] = int.from_bytes(read_word, 4, byteorder='big')
                         if W:
-                            return (read_word.from_bytes(4, byteorder='big'), write_addr)
+                            return (int.from_bytes(read_word, 4, byteorder='big'), write_addr)
                         else:
-                            return (read_word.from_bytes(4, byteorder='big'), None)
+                            return (int.from_bytes(read_word, 4, byteorder='big'), None)
                     else:
                         return None
                 else:
