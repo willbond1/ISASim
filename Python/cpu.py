@@ -142,9 +142,6 @@ class CPU:
     
     # decode instruction in fetch_stage and return instruction fields as list
     def decode(self):
-        if self.fetch_stage == 0: # end instruction
-            return 0
-
         cond_code = (self.fetch_stage & 0xF0000000) >> 28
         inst_code = (self.fetch_stage & 0xC000000) >> 26
 
@@ -218,9 +215,6 @@ class CPU:
 
     # execute instruction in decode_stage
     def execute(self):
-        if self.decode_stage == 0:
-            return 0
-
         cond_code = self.decode_stage[0]
         inst_code = self.decode_stage[1]
 
@@ -339,11 +333,11 @@ class CPU:
                 offset = self.shifter(ro, offset_shift, shift_type)
             
             if rn in self.forward_register:
-                rn = self.forward_register[rn]
+                rn_val = self.forward_register[rn]
             else:
-                rn = self.registers[rn] & word_mask
+                rn_val = self.registers[rn] & word_mask
 
-            before_addr = rn
+            before_addr = rn_val
             if U == 0: # how is offset applied?
                 after_addr = before_addr - offset
             else:
@@ -354,11 +348,11 @@ class CPU:
             else:
                 use_addr = after_addr
             
-            if W == 0 or L == 1: # writeback (only write back address on store since read always writes back memory value)
+            if W == 0: # writeback
                 reg_addr = 0
             else:
                 reg_addr = after_addr
-                self.forward_register[rd] = reg_addr
+                self.forward_register[rn] = reg_addr
         
             return (use_addr, reg_addr)
 
@@ -401,11 +395,8 @@ class CPU:
             return empty_stage
 
     # if instruction is a memory instruction, perform operation using use address
-    # returns write address
+    # returns (read writeback, address writeback)
     def memory_inst(self, active_memory):
-        if self.execute_stage == 0:
-            return 0
-
         inst_code = self.memory_control[1]
         if inst_code == 1:
             use_addr, write_addr = self.execute_stage
@@ -424,9 +415,9 @@ class CPU:
                     if active_memory.write(use_addr, rd.to_bytes(4, byteorder='big')): # write went through, so memory is freed up
                         self.memory_accessing = False
                         if W: # W == 1 for writeback
-                            return write_addr
+                            return (None, write_addr)
                         else:
-                            return empty_stage
+                            return (None, None)
                     else: # still writing
                         return None
                 else: # can't write
@@ -442,9 +433,9 @@ class CPU:
                         self.memory_accessing = False
                         self.forward_register[rd] = read_word
                         if W:
-                            return read_word
+                            return (read_word, write_addr)
                         else:
-                            return empty_stage
+                            return (read_word, None)
                     else:
                         return None
                 else:
@@ -456,23 +447,31 @@ class CPU:
 
     # write instruction result to destination register (if there is one) handling different instruction types
     def writeback(self):
-        if self.memory_stage == 0:
-            return 0
-        
         if self.memory_stage != empty_stage: # indicates writeback
             inst_code = self.writeback_control[1]
-            if inst_code == 0:
+            if inst_code == 0: # ALU
                 rd = self.writeback_control[5]
-            elif inst_code == 1:
-                rd = self.writeback_control[8]
+                self.registers[rd] = self.memory_stage
+                self.forward_register.pop(rd, None) # remove register from forwarding register since writeback has completed
+
+            elif inst_code == 1: # memory
+                rn, rd = self.writeback_control[7:9]
+                read_writeback, addr_writeback = self.memory_stage
+
+                if read_writeback:
+                    self.registers[rd] = read_writeback
+                    self.forward_register.pop(rd, None)
+
+                if addr_writeback:
+                    self.registers[rn] = addr_writeback
+                    self.forward_register.pop(rn, None)
+
             elif (inst_code == 2) or (inst_code == 3): # control and no-op instructions don't write back
                 return empty_stage
             else:
                 print('Error finding destination register in writeback stage')
                 return empty_stage
 
-            self.registers[rd] = self.memory_stage
-            self.forward_register.pop(rd, None) # remove register from forwarding register since writeback has completed
             return self.memory_stage
 
         else: # value to write back is empty_stage, indicating no writeback
