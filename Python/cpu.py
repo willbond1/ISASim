@@ -61,6 +61,8 @@ class CPU:
         print("Memory step: ", self.memory_stage)
         print("Writeback step: ", self.writeback_stage)
 
+        print("CPU Clock", self.clock)
+
 
     def set_memory(self, memory):
         self.memory = memory
