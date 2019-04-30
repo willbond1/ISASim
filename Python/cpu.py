@@ -22,6 +22,7 @@ class CPU:
 
         self.registers = [None] * 16
         self.registers[PC] = 0
+        self.registers[SP] = 0
         self.forward_register = {}
 
         self.memory_fetching = False
@@ -401,6 +402,7 @@ class CPU:
         inst_code = self.memory_control[1]
         if inst_code == 1:
             use_addr, write_addr = self.execute_stage
+            use_addr += self.registers[SP] # read/write relative to stack pointer
             L = self.memory_control[6]
             W = self.memory_control[5]
             rd = self.memory_control[8]
