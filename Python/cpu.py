@@ -104,6 +104,9 @@ class CPU:
     # handle different types of shift
     # returns tuple consisting of shift result and last bit shifted out (for setting C flag)
     def shifter(self, value, amount, shift_type, word_length=32):
+        if amount == 0:
+            return (value, 0)
+
         if shift_type == 0:
             result = (value << amount) & word_mask
             last_bit = (value >> (word_length - amount)) & 0x1
