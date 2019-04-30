@@ -20,7 +20,7 @@ class CPU:
         self.C = False
         self.V = False
 
-        self.registers = [None] * 16
+        self.registers = [0] * 16
         self.registers[PC] = 0
         self.registers[SP] = 0
         self.forward_register = {}
@@ -318,8 +318,8 @@ class CPU:
                     self.C = bool(last_bit)
 
             if written:
-                self.forward_register[rd] = result & word_mask # record result in forwarding register
-                return result & word_mask
+                self.forward_register[rd] = result # record result in forwarding register
+                return result
             else:
                 return 0
 
@@ -437,11 +437,11 @@ class CPU:
 
                     if read_word: # read went through
                         self.memory_accessing = False
-                        self.forward_register[rd] = int.from_bytes(read_word, 4, byteorder='big')
+                        self.forward_register[rd] = int.from_bytes(read_word, byteorder='big')
                         if W:
-                            return (int.from_bytes(read_word, 4, byteorder='big'), write_addr)
+                            return (int.from_bytes(read_word, byteorder='big'), write_addr)
                         else:
-                            return (int.from_bytes(read_word, 4, byteorder='big'), None)
+                            return (int.from_bytes(read_word, byteorder='big'), None)
                     else:
                         return None
                 else:

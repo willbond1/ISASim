@@ -115,8 +115,8 @@ class TestISA(unittest.TestCase):
         self.f_cpu.fetch_stage = inst
         self.f_cpu.decode_stage = self.f_cpu.decode()
         self.assertEqual(self.f_cpu.execute(), 0x18)
-        self.assertEqual(self.f_cpu.fetch_stage, empty_stage)
-        self.assertEqual(self.f_cpu.decode_stage, empty_stage)
+        self.assertEqual(self.f_cpu.fetch_stage, None)
+        self.assertEqual(self.f_cpu.decode_stage, None)
         self.assertEqual(self.f_cpu.registers[14], 0xC)
 
         self.f_cpu.Z = True
@@ -126,6 +126,73 @@ class TestISA(unittest.TestCase):
         self.f_cpu.decode_stage = self.f_cpu.decode()
         self.assertEqual(self.f_cpu.execute(), 0x0)
         self.assertEqual(self.f_cpu.registers[14], 0xC)
+
+        # ALU instructions
+        inst = 0b11100011101000000110000000000100 # 4 -> r0
+        self.f_cpu.fetch_stage = inst
+        self.f_cpu.decode_stage = self.f_cpu.decode()
+        self.assertEqual(self.f_cpu.execute(), 4)
+        self.assertEqual(self.f_cpu.forward_register[0], 4)
+
+        inst = 0b11100011101000010110000000001010 # 10 -> r1
+        self.f_cpu.fetch_stage = inst
+        self.f_cpu.decode_stage = self.f_cpu.decode()
+        self.assertEqual(self.f_cpu.execute(), 10)
+        self.assertEqual(self.f_cpu.forward_register[1], 10)
+
+        inst = 0b11100000100000110000000000000001 # r3 <- r0 + r1
+        self.f_cpu.fetch_stage = inst
+        self.f_cpu.decode_stage = self.f_cpu.decode()
+        self.assertEqual(self.f_cpu.execute(), 14)
+        self.assertEqual(self.f_cpu.forward_register[3], 14)
+
+        inst = 0b11100000010100110000000000000001 # r3 <- r0 - r1
+        self.f_cpu.fetch_stage = inst
+        self.f_cpu.decode_stage = self.f_cpu.decode()
+        self.assertEqual(self.f_cpu.execute(), -6)
+        self.assertTrue(self.f_cpu.N)
+
+        inst = 0b01010011000000000000000000000000 # no op
+        self.f_cpu.fetch_stage = inst
+        self.f_cpu.decode_stage = self.f_cpu.decode()
+        self.assertEqual(self.f_cpu.execute(), word_mask)
+
+        inst = 0b01010110000000000000000000000000 # instruction that should not execute
+        self.f_cpu.fetch_stage = inst
+        self.f_cpu.decode_stage = self.f_cpu.decode()
+        self.assertEqual(self.f_cpu.execute(), word_mask)
+
+    def test_memory(self):
+        self.f_cpu.registers[3] = 17
+        self.f_cpu.registers[10] = 0x8
+        inst = 0b11100100010101000110000000000000 # r3 -> [r10]
+        self.f_cpu.fetch_stage = inst
+        self.f_cpu.decode_stage = self.f_cpu.decode()
+        self.f_cpu.memory_control = self.f_cpu.decode()
+        self.f_cpu.execute_stage = self.f_cpu.execute()
+
+        mem_result = self.f_cpu.memory_inst(self.f_cpu.memory)
+        while not mem_result:
+            mem_result = self.f_cpu.memory_inst(self.f_cpu.memory)
+        self.assertEqual(self.f_cpu.read(0x8), 17)
+
+        inst = 0b11100011101010100110000000100000 # 0x20 -> r10
+        self.f_cpu.fetch_stage = inst
+        self.f_cpu.decode_stage = self.f_cpu.decode()
+        self.f_cpu.execute_stage = self.f_cpu.execute()
+
+        self.f_cpu.write(0x20, 57)
+        inst = 0b11100100011101000110000000000000 # r3 -> [r10]
+        self.f_cpu.fetch_stage = inst
+        self.f_cpu.decode_stage = self.f_cpu.decode()
+        self.f_cpu.memory_control = self.f_cpu.decode()
+        self.f_cpu.execute_stage = self.f_cpu.execute()
+
+        mem_result = self.f_cpu.memory_inst(self.f_cpu.memory)
+        while not mem_result:
+            mem_result = self.f_cpu.memory_inst(self.f_cpu.memory)
+        self.assertEqual(mem_result[0], 57)
+        self.assertEqual(self.f_cpu.forward_register[3], 57)
 
 if __name__ == '__main__':
     unittest.main()
