@@ -163,6 +163,7 @@ class TestISA(unittest.TestCase):
         self.assertEqual(self.f_cpu.execute(), word_mask)
 
     def test_memory(self):
+        self.f_cpu.registers[13] = 0x20 # set stack pointer
         self.f_cpu.registers[3] = 17
         self.f_cpu.registers[10] = 0x8
         inst = 0b11100100010101000110000000000000 # r3 -> [r10]
@@ -174,14 +175,14 @@ class TestISA(unittest.TestCase):
         mem_result = self.f_cpu.memory_inst(self.f_cpu.memory)
         while not mem_result:
             mem_result = self.f_cpu.memory_inst(self.f_cpu.memory)
-        self.assertEqual(self.f_cpu.read(0x8), 17)
+        self.assertEqual(self.f_cpu.read(0x28), 17)
 
         inst = 0b11100011101010100110000000100000 # 0x20 -> r10
         self.f_cpu.fetch_stage = inst
         self.f_cpu.decode_stage = self.f_cpu.decode()
         self.f_cpu.execute_stage = self.f_cpu.execute()
 
-        self.f_cpu.write(0x20, 57)
+        self.f_cpu.write(0x40, 57)
         inst = 0b11100100011101000110000000000000 # r3 -> [r10]
         self.f_cpu.fetch_stage = inst
         self.f_cpu.decode_stage = self.f_cpu.decode()
