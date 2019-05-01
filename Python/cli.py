@@ -3,11 +3,13 @@ import cpu
 
 breaks = set()
 
-help = ["FL filename: load a file into memory", "LM addr: load value into memory",
-        "RM word addr: read value from memory", "DM mem_level start size: view memory level", "ST: Step instruction", "DC: Display CPU", "BR addr: add a breakpoint at addr", "CM addr: run until addr"]
+help = ["FL filename: load a file into memory", "LM word addr: load value into memory",
+        "RM addr: read value from memory", "DM mem_level start size: view memory level",
+        "ST: Step instruction", "DC: Display CPU", "BR addr: add a breakpoint at addr",
+        "CM addr: run until addr", "HELP: display help again", "EXIT: exit"]
 for line in help:
     print(line)
-input_string = input()
+input_string = input('> ')
 while input_string != "exit":
     input_string = input_string.upper().split()
 
@@ -53,4 +55,4 @@ while input_string != "exit":
     else:
         for line in help:
             print(line)
-    input_string = input()
+    input_string = input('> ')
