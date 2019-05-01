@@ -75,10 +75,15 @@ class Assembler:
         self.symbol_table = {}
         self.file = file
         self.outfile = open("program.txt", "w")
+        self.outfile_bits = open("program_bits.txt", "w")
         self.machine_lines = []
+        self.machine_lines_bit = []
         for line in open(file, "r"):
-            self.machine_lines += [str(bin(self.assemble(line))) + "\n"]
+            self.machine_lines += [str(self.assemble(line)) + " "]
+            self.machine_lines_bit += [str(bin(self.assemble(line))) + " "]
+
         self.outfile.writelines(self.machine_lines)
+        self.outfile_bits.writelines(self.machine_lines_bit)
             # decode instruction in fetch_stage and return instruction fields as list
 
 
@@ -190,6 +195,7 @@ class Assembler:
             tokenized = test_regex.findall(command)[0]
             machine_code |= self.condition_code[tokenized[1]] << 28
             machine_code |= self.register_map[tokenized[2]] << 12
+            machine_code |= 0b1 << 20
             op2 = tokenized[3]
         if areth_regex.match(command):
             tokenized = areth_regex.findall(command)[0]
