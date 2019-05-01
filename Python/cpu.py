@@ -59,10 +59,26 @@ class CPU:
         print("Pipeline contents:")
         print("Fetch step:", hex(self.fetch_stage) if self.fetch_stage else hex(empty_stage))
         print("Decode step:", [hex(d) for d in self.decode_stage] if self.decode_stage else hex(empty_stage))
-        print("Execute step:", hex(self.execute_stage) if self.execute_stage else hex(empty_stage))
-        print("Memory step:", hex(self.memory_stage) if self.memory_stage else hex(empty_stage))
-        print("Writeback step:", hex(self.writeback_stage) if self.writeback_stage else hex(empty_stage), '\n')
+
+        if isinstance(self.execute_stage, tuple):
+            print('Execute step:', [hex(i) if i else hex(empty_stage) for i in self.execute_stage])
+        else:
+            print("Execute step:", hex(self.execute_stage) if self.execute_stage else hex(empty_stage))
+
+        if isinstance(self.memory_stage, tuple):
+            print('Memory step:', [hex(i) if i else hex(empty_stage) for i in self.memory_stage])
+        else:
+            print("Memory step:", hex(self.memory_stage) if self.memory_stage else hex(empty_stage))
+
+        if isinstance(self.writeback_stage, tuple):
+            print('Writeback step:', [hex(i) if i else hex(empty_stage) for i in self.writeback_stage])
+        else:
+            print("Writeback step:", hex(self.writeback_stage) if self.writeback_stage else hex(empty_stage), '\n')
         
+        print("Execute store:", [hex(d) for d in self.execute_store] if self.execute_store else hex(empty_stage))
+        print("Memory control:", [hex(d) for d in self.memory_control] if self.memory_control else hex(empty_stage))
+        print("Writeback control:", [hex(d) for d in self.writeback_control] if self.writeback_control else hex(empty_stage))
+
         print('CPU clock:', int(self.clock))
 
     def set_memory(self, memory):
