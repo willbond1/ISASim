@@ -1,8 +1,10 @@
-// useful metadata
+// registers
 r0 <- 0 // current index
 r1 <- 0x0 // beginning address of array
 r2 <- 5 // array size
 r3 <- 0 // flag to indicate if swap happened
+r4 <- 0 // hold first array element
+r5 <- 0 // hold second array element
 
 init: // store array values to memory
 5 -> [r1 + 4*0]
@@ -28,9 +30,9 @@ if r4 > r5:
 // check inner loop condition
 if r0 < r2:
 	branch back to beginning of loop
+r0 <- 0
 
 // check outer loop condition
 if r3 == 1:
-	r0 <- 0
 	r3 <- 0
 	branch back to beginning of loop
