@@ -176,6 +176,7 @@ class TestISA(unittest.TestCase):
         while not mem_result:
             mem_result = self.f_cpu.memory_inst(self.f_cpu.memory)
         self.assertEqual(self.f_cpu.read(0x28), 17)
+        self.assertFalse(self.f_cpu.memory_accessing)
 
         inst = 0b11100011101010100110000000100000 # 0x20 -> r10
         self.f_cpu.fetch_stage = inst
@@ -194,6 +195,7 @@ class TestISA(unittest.TestCase):
             mem_result = self.f_cpu.memory_inst(self.f_cpu.memory)
         self.assertEqual(mem_result[0], 57)
         self.assertEqual(self.f_cpu.forward_register[3], 57)
+        self.assertFalse(self.f_cpu.memory_accessing)
 
     def test_writeback(self):
         # ALU
@@ -252,6 +254,42 @@ class TestISA(unittest.TestCase):
         self.assertEqual(self.f_cpu.registers[3], 57)
         self.assertFalse(3 in self.f_cpu.forward_register)
         self.assertFalse(10 in self.f_cpu.forward_register)
+
+    def test_pipeline(self):
+        inst = 0xDEADBEEF
+        self.f_cpu.write(0, inst)
+        self.f_cpu.step(True, True)
+        self.assertFalse(self.f_cpu.fetch_stage)
+        self.assertTrue(self.f_cpu.memory_fetching)
+
+        mem_inst = (0x20, 0x40)
+        self.f_cpu.execute_stage = mem_inst
+        self.f_cpu.memory_control = (0, 1, 0, 0, 0, 0, 0, 0, 0)
+        mem_result = self.f_cpu.memory_inst(self.f_cpu.memory)
+        self.assertFalse(mem_result)
+        self.assertFalse(self.f_cpu.memory_accessing)
+
+        while not self.f_cpu.fetch_stage:
+            self.f_cpu.step(True, True)
+        self.assertTrue(self.f_cpu.fetch_stage)
+        self.assertFalse(self.f_cpu.memory_fetching)
+
+        mem_result = self.f_cpu.memory_inst(self.f_cpu.memory)
+        self.assertFalse(mem_result)
+        self.assertTrue(self.f_cpu.memory_accessing)
+
+        self.f_cpu.execute_stage = None
+        self.f_cpu.memory_control = None
+        self.f_cpu.memory_accessing = False
+        self.f_cpu.step(True, False)
+        self.assertTrue(self.f_cpu.decode_stage)
+        self.assertFalse(self.f_cpu.memory_fetching)
+
+        self.f_cpu.step(True, True)
+        self.assertTrue(self.f_cpu.memory_fetching)
+        self.assertTrue(self.f_cpu.execute_stage)
+        self.assertFalse(self.f_cpu.decode_stage)
+        self.assertTrue(self.f_cpu.execute_store)
 
 if __name__ == '__main__':
     unittest.main()

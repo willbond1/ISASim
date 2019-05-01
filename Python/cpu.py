@@ -403,7 +403,7 @@ class CPU:
     # returns (read writeback, address writeback)
     def memory_inst(self, active_memory):
         inst_code = self.memory_control[1]
-        if inst_code == 1:
+        if inst_code == 1 and self.execute_stage != word_mask:
             use_addr, write_addr = self.execute_stage
             use_addr += self.registers[SP] # read/write relative to stack pointer
             L = self.memory_control[6]
