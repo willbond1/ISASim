@@ -1,0 +1,36 @@
+// useful metadata
+r0 <- 0 // current index
+r1 <- 0x0 // beginning address of array
+r2 <- 5 // array size
+r3 <- 0 // flag to indicate if swap happened
+
+init: // store array values to memory
+5 -> [r1 + 4*0]
+1 -> [r1 + 4*1]
+4 -> [r1 + 4*2]
+2 -> [r1 + 4*3]
+8 -> [r1 + 4*4]
+
+loop:
+// load current index and next one to r4 and r5 respectively
+r4 <- [r1 + 4*r0]
+r0 <- r0 + 1
+r5 <- [r1 + 4*r0]
+
+// if earlier value is larger, perform swap and set flag
+if r4 > r5:
+	r4 -> [r1 + 4*r0]
+	r0 <- r0 - 1
+	r5 -> [r1 + 4*r0]
+	r3 <- 1
+	r0 <- r0 + 1
+
+// check inner loop condition
+if r0 < r2:
+	branch back to beginning of loop
+
+// check outer loop condition
+if r3 == 1:
+	r0 <- 0
+	r3 <- 0
+	branch back to beginning of loop
