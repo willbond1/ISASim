@@ -195,5 +195,63 @@ class TestISA(unittest.TestCase):
         self.assertEqual(mem_result[0], 57)
         self.assertEqual(self.f_cpu.forward_register[3], 57)
 
+    def test_writeback(self):
+        # ALU
+        inst = 0b11100011101000010110000000001010 # 10 -> r1
+        self.f_cpu.fetch_stage = inst
+        self.f_cpu.decode_stage = self.f_cpu.decode()
+        self.f_cpu.execute_stage = self.f_cpu.execute()
+        self.f_cpu.memory_control = self.f_cpu.decode_stage
+        self.f_cpu.memory_stage = self.f_cpu.memory_inst(self.f_cpu.memory)
+        self.f_cpu.writeback_control = self.f_cpu.decode_stage
+        self.assertEqual(self.f_cpu.writeback(), 10)
+        self.assertEqual(self.f_cpu.registers[1], 10)
+        self.assertFalse(1 in self.f_cpu.forward_register)
+
+        # memory write
+        self.f_cpu.registers[13] = 0x20 # set stack pointer
+        self.f_cpu.registers[3] = 17
+        self.f_cpu.registers[10] = 0x8
+        inst = 0b11100100010101000110000000000000 # r3 -> [r10]
+        self.f_cpu.fetch_stage = inst
+        self.f_cpu.decode_stage = self.f_cpu.decode()
+        self.f_cpu.memory_control = self.f_cpu.decode()
+        self.f_cpu.execute_stage = self.f_cpu.execute()
+
+        mem_result = self.f_cpu.memory_inst(self.f_cpu.memory)
+        while not mem_result:
+            mem_result = self.f_cpu.memory_inst(self.f_cpu.memory)
+        self.assertEqual(self.f_cpu.read(0x28), 17)
+
+        self.f_cpu.memory_stage = mem_result
+        self.f_cpu.writeback_control = self.f_cpu.decode_stage
+        self.assertEqual(self.f_cpu.writeback(), (None, 0x8))
+        self.assertEqual(self.f_cpu.registers[10], 0x8)
+        self.assertFalse(10 in self.f_cpu.forward_register)
+
+        # memory read
+        inst = 0b11100011101010100110000000100000 # 0x20 -> r10
+        self.f_cpu.fetch_stage = inst
+        self.f_cpu.decode_stage = self.f_cpu.decode()
+        self.f_cpu.execute_stage = self.f_cpu.execute()
+
+        self.f_cpu.write(0x40, 57)
+        inst = 0b11100100011101000110000000000000 # r3 -> [r10]
+        self.f_cpu.fetch_stage = inst
+        self.f_cpu.decode_stage = self.f_cpu.decode()
+        self.f_cpu.memory_control = self.f_cpu.decode()
+        self.f_cpu.execute_stage = self.f_cpu.execute()
+
+        mem_result = self.f_cpu.memory_inst(self.f_cpu.memory)
+        while not mem_result:
+            mem_result = self.f_cpu.memory_inst(self.f_cpu.memory)
+        
+        self.f_cpu.memory_stage = mem_result
+        self.f_cpu.writeback_control = self.f_cpu.decode_stage
+        self.assertEqual(self.f_cpu.writeback(), (57, 0x20))
+        self.assertEqual(self.f_cpu.registers[3], 57)
+        self.assertFalse(3 in self.f_cpu.forward_register)
+        self.assertFalse(10 in self.f_cpu.forward_register)
+
 if __name__ == '__main__':
     unittest.main()
