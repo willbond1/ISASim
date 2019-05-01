@@ -172,7 +172,7 @@ class Memory:
             index = self.decode_index(addr)
 
             hit_block = self.sets[index].is_hit(tag)
-            if hit_block is None:
+            if not hit_block:
                 hit_block = self.sets[index].find_LRU()
                 if hit_block.dirty:
                     old_tag, old_data = hit_block.read_block()
@@ -200,7 +200,7 @@ class Memory:
             index = self.decode_index(addr)
 
             hit_block = self.sets[index].is_hit(tag)
-            if hit_block is None:
+            if not hit_block:
                 hit_block = self.sets[index].find_LRU()
                 if hit_block.dirty:
                     old_tag, old_data = hit_block.read_block()
@@ -234,7 +234,7 @@ class Memory:
             index = self.decode_index(addr)
 
             hit_block = self.sets[index].is_hit(tag)
-            if hit_block is None:
+            if not hit_block:
                 hit_block = self.sets[index].find_LRU()
                 if hit_block.dirty:
                     old_tag, old_data = hit_block.read_block()
@@ -269,7 +269,7 @@ class Memory:
             index = self.decode_index(addr)
 
             hit_block = self.sets[index].is_hit(tag)
-            if hit_block is None:
+            if not hit_block:
                 hit_block = self.sets[index].find_LRU()
                 if hit_block.dirty:
                     old_tag, old_data = hit_block.read_block()
@@ -327,6 +327,42 @@ class RAM(Memory):
             return
         for i in range(index, (index + size)):
             self.sets[i].RAM_display((addr + (i*self.line_length))-((addr + (i*self.line_length))%(self.line_length)))
+    
+    def read(self, addr):
+        if self.timers.setdefault(addr, 0) >= self.latency:
+            offset = self.decode_offset(addr)
+            index = self.decode_index(addr)
+            return self.sets[index].lines[0].read(offset)
+        else:
+            self.timers[addr] += 1
+            return None
+
+    def write(self, addr, word):
+        if self.timers.setdefault(addr, 0) >= self.latency:
+            offset = self.decode_offset(addr)
+            index = self.decode_index(addr)
+            self.sets[index].lines[0].write(word, offset) # since RAM is direct-mapped
+            return word
+        else:
+            self.timers[addr] += 1
+            return None
+
+    def read_block(self, addr):
+        if self.timers.setdefault(addr, 0) >= self.latency:
+            index = self.decode_index(addr)
+            return self.sets[index].lines[0].read_block()
+        else:
+            self.timers[addr] += 1
+            return None
+
+    def write_block(self, addr, block):
+        if self.timers.setdefault(addr, 0) >= self.latency:
+            index = self.decode_index(addr)
+            self.sets[index].lines[0].write_block(block)
+            return block
+        else:
+            self.timers[addr] += 1
+            return None
 
 from math import ceil, log
 from cpu import CPU
