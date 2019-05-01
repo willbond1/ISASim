@@ -18,10 +18,9 @@ while input_string != "exit":
         mem_level = sim.processor.memory
         while mem_level.next_level is not None:
             mem_level = mem_level.next_level
-        for line in (open(input_string[1], "r")):
-            for num, line_num in enumerate(line.split()):
-                print(line_num, num)
-                mem_level.write_complete(num*4, int(line_num).to_bytes(4, byteorder="big"))
+        for num, line in enumerate(open(input_string[1], "r")):
+            print(num*4, line)
+            mem_level.write_complete(num*4, int(line).to_bytes(4, byteorder="big"))
     # LOAD MEMORY
     elif input_string[0] == "LM":
         sim.processor.write(int(input_string[2]), int(input_string[1]))
@@ -43,6 +42,7 @@ while input_string != "exit":
         breaks.add(int(input_string[1]))
     elif input_string[0] == "CM":
         breaks.add(int(input_string[1]))
+        sim.processor.step(True, True)
         while sim.processor.registers[15] not in breaks:
             sim.processor.step(True, True)
     elif input_string[0] == "DB":

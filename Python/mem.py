@@ -38,7 +38,7 @@ class Line:
 # represents single set which contains multiple lines
 class Set:
     def __init__(self, ways, words, is_ram):
-        self.lines=[]
+        self.lines = []
         for i in range(ways):
             self.lines += [Line(words, is_ram)]
         if is_ram:
@@ -112,7 +112,7 @@ class Memory:
         self.set_n = ceil(self.line_n / ways) # number of sets
         self.index_n = ceil(log(self.set_n, 2)) # number of bits required to index sets
         self.word_n = self.line_length // CPU.word_size # words per line
-        self.offset_n = ceil(log(self.word_n, 2)) # number of bits in offset field
+        self.offset_n = ceil(log(self.line_length, 2)) # number of bits in offset field
         self.tag_n = (CPU.word_size * 8) - (self.offset_n + self.index_n) # number of bits in tag field
         self.sets = []
         for i in range(self.set_n):
@@ -127,13 +127,13 @@ class Memory:
     def decode_index(self, addr):
         mask = ((self.set_n - 1) << self.offset_n)
         return ((addr & mask) >> self.offset_n)
-    
+
     def decode_tag(self, addr):
         mask = (((2 ** self.tag_n) - 1) << (self.offset_n + self.index_n))
         return ((addr & mask) >> (self.offset_n + self.index_n))
-    
+
     def decode_offset(self, addr):
-        return (addr & (self.word_n - 1))
+        return (addr & (self.line_length - 1))
 
     def encode(self, tag, index, offset):
         addr = tag << self.index_n
@@ -154,7 +154,7 @@ class Memory:
         print('Number of bits in index field: ', self.index_n)
         print('Number of bits in offset field: ', self.offset_n)
         print('Number of bits in tag field: ', self.tag_n)
-    
+
     # display [size] sets of memory starting at [addr]
     def display(self, addr, size):
         index = self.decode_index(addr)
