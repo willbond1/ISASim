@@ -43,8 +43,10 @@ while input_string != "exit":
     elif input_string[0] == "BR":
         breaks.add(int(input_string[1]))
     elif input_string[0] == "CM":
+        curr_pc = sim.processor.registers[15]
+        while curr_pc == sim.processor.registers[15]:
+            sim.processor.step(True, True)
         breaks.add(int(input_string[1]))
-        sim.processor.step(True, True)
         while sim.processor.registers[15] not in breaks:
             sim.processor.step(True, True)
     elif input_string[0] == "DB":
