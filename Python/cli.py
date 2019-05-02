@@ -5,7 +5,6 @@ breaks = set()
 
 help = ["FL filename: load a file into memory", "LM word addr: load value into memory",
         "RM addr: read value from memory", "DM mem_level start size: view memory level",
-        "SP addr: set the stack pointer to the address in memory specified",
         "ST: Step instruction", "DC: Display CPU", "BR addr: add a breakpoint at addr",
         "CM addr: run until addr", "HELP: display help again", "EXIT: exit"]
 for line in help:
@@ -24,6 +23,7 @@ while input_string != "exit":
         for num, line in enumerate(open(input_string[1], "r")):
             print(num*4, line)
             mem_level.write_complete(num*4, int(line).to_bytes(4, byteorder="big"))
+            sim.processor.registers[13] = (num+1)*4
     # LOAD MEMORY
     elif input_string[0] == "LM":
         sim.processor.write(int(input_string[2]), int(input_string[1]))
@@ -37,8 +37,6 @@ while input_string != "exit":
             if mem_level.next_level is not None:
                 mem_level = mem_level.next_level
         mem_level.display(int(input_string[2]), int(input_string[3]))
-    elif input_string[0] == "SP":
-        sim.processor.registers[13] = int(input_string[1])
     elif input_string[0] == "ST":
         sim.processor.step(True, True)
     elif input_string[0] == "DC":
