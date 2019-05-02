@@ -503,7 +503,7 @@ class CPU:
     def step(self, with_cache, with_pipe):
         active_memory = self.memory
         if not with_cache: # get reference to RAM (no next level)
-            while active_memory.next_level:
+            while active_memory.next_level != None:
                 active_memory = active_memory.next_level
 
         self.writeback_stage = None
@@ -511,8 +511,7 @@ class CPU:
 
         # move from memory to writeback stage, checking to see if pipeline is blocked
         wrote_back = False
-        if (not self.writeback_stage and not self.writeback_control and self.memory_stage and self.memory_control):
-            print('Moving from memory to writeback')
+        if (self.writeback_stage == None and self.writeback_control == None and self.memory_stage != None and self.memory_control != None):
             self.writeback_control = self.memory_control
             self.writeback_stage = self.writeback()
             wrote_back = True
@@ -520,34 +519,31 @@ class CPU:
             self.memory_stage = None
 
         # move from execute to memory stage
-        if (not self.memory_stage and self.execute_stage):
-            print('Moving from execute to memory operation')
-            if not self.memory_control: # since memory operation can stall, if control register is empty, move it up
+        if (self.memory_stage == None and self.execute_stage != None and self.execute_store != None):
+            if self.memory_control == None: # since memory operation can stall, if control register is empty, move it up
                 self.memory_control = self.execute_store
-                self.execute_store = None
 
             mem_result = self.memory_inst(active_memory) # attempt memory instruction
-            if mem_result:
+            if mem_result != None:
                 self.memory_stage = mem_result
                 self.execute_stage = None
+                self.execute_store = None
 
         # move from decode to control registers/execute stage
-        if (not self.execute_store and not self.execute_stage and self.decode_stage):
-            print('Moving from decode to execute')
+        if (self.execute_store == None and self.execute_stage == None and self.decode_stage != None):
             self.execute_stage = self.execute()
             self.execute_store = self.decode_stage
             self.decode_stage = None
 
         # move from fetch to decode stage
-        if (not self.decode_stage and self.fetch_stage):
-            print('Moving from fetch to decode')
+        if (self.decode_stage == None and self.fetch_stage != None):
             self.decode_stage = self.decode()
             self.fetch_stage = None
         
         # move instruction from memory to fetch stage
         if (with_pipe or wrote_back):
             next_inst = self.fetch(active_memory)
-            if next_inst:
+            if next_inst != None:
                 self.fetch_stage = next_inst
         
         self.clock += 1
