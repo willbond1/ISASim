@@ -291,5 +291,81 @@ class TestISA(unittest.TestCase):
         self.assertFalse(self.f_cpu.decode_stage)
         self.assertTrue(self.f_cpu.execute_store)
 
+        self.f_cpu.execute_stage = None
+        self.f_cpu.execute_store = None
+
+        inst = 0b11100011101000010110000000001010
+        self.f_cpu.fetch_stage = inst
+        self.f_cpu.step(True, False)
+        self.assertTrue(self.f_cpu.decode_stage)
+        self.assertFalse(self.f_cpu.fetch_stage)
+        self.f_cpu.step(True, False)
+        self.assertTrue(self.f_cpu.execute_stage)
+        self.assertTrue(self.f_cpu.execute_store)
+        self.assertFalse(self.f_cpu.decode_stage)
+        self.f_cpu.step(True, False)
+        self.assertTrue(self.f_cpu.memory_stage)
+        self.assertTrue(self.f_cpu.memory_control)
+        self.assertFalse(self.f_cpu.execute_stage)
+        self.assertFalse(self.f_cpu.execute_store)
+        self.f_cpu.step(True, False)
+        self.assertFalse(self.f_cpu.memory_control)
+        self.assertFalse(self.f_cpu.memory_stage)
+        self.assertTrue(self.f_cpu.writeback_control)
+        self.assertTrue(self.f_cpu.writeback_stage)
+
+        self.f_cpu.writeback_control = None
+        self.f_cpu.writeback_stage = None
+
+        inst = 0b11100011101000010110000000001010
+        self.f_cpu.fetch_stage = inst
+        self.f_cpu.step(True, True)
+        self.assertTrue(self.f_cpu.decode_stage)
+        self.assertFalse(self.f_cpu.fetch_stage)
+        self.f_cpu.step(True, True)
+        self.assertTrue(self.f_cpu.execute_stage)
+        self.assertTrue(self.f_cpu.execute_store)
+        self.assertFalse(self.f_cpu.decode_stage)
+        self.f_cpu.step(True, True)
+        self.assertTrue(self.f_cpu.memory_stage)
+        self.assertTrue(self.f_cpu.memory_control)
+        self.assertFalse(self.f_cpu.execute_stage)
+        self.assertFalse(self.f_cpu.execute_store)
+        self.f_cpu.step(True, True)
+        self.assertFalse(self.f_cpu.memory_control)
+        self.assertFalse(self.f_cpu.memory_stage)
+        self.assertTrue(self.f_cpu.writeback_control)
+        self.assertTrue(self.f_cpu.writeback_stage)
+    
+    def test_misc(self):
+        # test cond codes
+        self.f_cpu.registers[1] = 10
+        self.f_cpu.registers[3] = 4
+        inst = 0b11100001010100000001000000000011
+        self.f_cpu.fetch_stage = inst
+        self.f_cpu.decode_stage = self.f_cpu.decode()
+        self.f_cpu.execute_stage = self.f_cpu.execute()
+        self.assertFalse(0 in self.f_cpu.forward_register)
+        self.assertTrue(self.f_cpu.cond(0b1100))
+        self.assertFalse(self.f_cpu.cond(0b1011))
+        self.assertFalse(self.f_cpu.cond(0b0000))
+        self.assertTrue(self.f_cpu.cond(0b0001))
+
+        # test shifters
+        self.f_cpu.registers[1] = 0x20
+        self.f_cpu.registers[5] = 2
+        inst = 0b11000111101000110100001000000101
+        self.f_cpu.fetch_stage = inst
+        self.f_cpu.decode_stage = self.f_cpu.decode()
+        self.f_cpu.execute_stage = self.f_cpu.execute()
+        self.assertEqual(self.f_cpu.shifter(2, 2, 0)[0], 8)
+        self.assertEqual(self.f_cpu.execute_stage[0], 0x28)
+
+        inst = 0b11100001101010100000000100000101
+        self.f_cpu.fetch_stage = inst
+        self.f_cpu.decode_stage = self.f_cpu.decode()
+        self.f_cpu.execute_stage = self.f_cpu.execute()
+        self.assertEqual(self.f_cpu.forward_register[10], 8)
+
 if __name__ == '__main__':
     unittest.main()

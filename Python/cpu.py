@@ -47,9 +47,9 @@ class CPU:
         for i in range(13):
             print("Contents of register", str(i) + ":" , hex(self.registers[i]) if self.registers[i] else hex(empty_reg))
 
-        print("Contents of PC:", hex(self.registers[PC]) if self.registers[PC] else hex(empty_reg))
-        print("Contents of LR:", hex(self.registers[LR]) if self.registers[LR] else hex(empty_reg))
-        print("Contents of SP:", hex(self.registers[SP]) if self.registers[SP] else hex(empty_reg), "\n")
+        print("Contents of PC:", hex(self.registers[PC]) if self.registers[PC] != None else hex(empty_reg))
+        print("Contents of LR:", hex(self.registers[LR]) if self.registers[LR] != None else hex(empty_reg))
+        print("Contents of SP:", hex(self.registers[SP]) if self.registers[SP] != None else hex(empty_reg), "\n")
 
         print("N flag:", self.N)
         print("Z flag:", self.Z)
@@ -57,27 +57,27 @@ class CPU:
         print("V flag:", self.V, "\n")
 
         print("Pipeline contents:")
-        print("Fetch step:", hex(self.fetch_stage) if self.fetch_stage else hex(empty_stage))
-        print("Decode step:", [hex(d) for d in self.decode_stage] if self.decode_stage else hex(empty_stage))
+        print("Fetch step:", hex(self.fetch_stage) if self.fetch_stage != None else hex(empty_stage))
+        print("Decode step:", [hex(d) for d in self.decode_stage] if self.decode_stage != None else hex(empty_stage))
 
         if isinstance(self.execute_stage, tuple):
-            print('Execute step:', [hex(i) if i else hex(empty_stage) for i in self.execute_stage])
+            print('Execute step:', [hex(i) if i != None else hex(empty_stage) for i in self.execute_stage])
         else:
-            print("Execute step:", hex(self.execute_stage) if self.execute_stage else hex(empty_stage))
+            print("Execute step:", hex(self.execute_stage) if self.execute_stage != None else hex(empty_stage))
 
         if isinstance(self.memory_stage, tuple):
-            print('Memory step:', [hex(i) if i else hex(empty_stage) for i in self.memory_stage])
+            print('Memory step:', [hex(i) if i != None else hex(empty_stage) for i in self.memory_stage])
         else:
-            print("Memory step:", hex(self.memory_stage) if self.memory_stage else hex(empty_stage))
+            print("Memory step:", hex(self.memory_stage) if self.memory_stage != None else hex(empty_stage))
 
         if isinstance(self.writeback_stage, tuple):
-            print('Writeback step:', [hex(i) if i else hex(empty_stage) for i in self.writeback_stage])
+            print('Writeback step:', [hex(i) if i != None else hex(empty_stage) for i in self.writeback_stage])
         else:
-            print("Writeback step:", hex(self.writeback_stage) if self.writeback_stage else hex(empty_stage), '\n')
+            print("Writeback step:", hex(self.writeback_stage) if self.writeback_stage != None else hex(empty_stage), '\n')
         
-        print("Execute store:", [hex(d) for d in self.execute_store] if self.execute_store else hex(empty_stage))
-        print("Memory control:", [hex(d) for d in self.memory_control] if self.memory_control else hex(empty_stage))
-        print("Writeback control:", [hex(d) for d in self.writeback_control] if self.writeback_control else hex(empty_stage))
+        print("Execute store:", [hex(d) for d in self.execute_store] if self.execute_store != None else hex(empty_stage))
+        print("Memory control:", [hex(d) for d in self.memory_control] if self.memory_control != None else hex(empty_stage))
+        print("Writeback control:", [hex(d) for d in self.writeback_control] if self.writeback_control != None else hex(empty_stage))
 
         print('CPU clock:', int(self.clock))
 
@@ -344,14 +344,14 @@ class CPU:
             I, P, U, W, L, rn, rd = self.decode_stage[2:9]
             if I == 0:
                 offset = self.decode_stage[9]
-            else:
+            elif I == 1:
                 offset_shift, shift_type, ro = self.decode_stage[9:]
                 if ro in self.forward_register:
                     ro = self.forward_register[ro]
                 else:
                     ro = self.registers[ro] & word_mask
 
-                offset = self.shifter(ro, offset_shift, shift_type)
+                offset, last_bit = self.shifter(ro, offset_shift, shift_type)
             
             if rn in self.forward_register:
                 rn_val = self.forward_register[rn]
@@ -501,7 +501,6 @@ class CPU:
 
     # step pipeline
     def step(self, with_cache, with_pipe):
-        print(self.registers[PC])
         active_memory = self.memory
         if not with_cache: # get reference to RAM (no next level)
             while active_memory.next_level:
@@ -513,6 +512,7 @@ class CPU:
         # move from memory to writeback stage, checking to see if pipeline is blocked
         wrote_back = False
         if (not self.writeback_stage and not self.writeback_control and self.memory_stage and self.memory_control):
+            print('Moving from memory to writeback')
             self.writeback_control = self.memory_control
             self.writeback_stage = self.writeback()
             wrote_back = True
@@ -521,6 +521,7 @@ class CPU:
 
         # move from execute to memory stage
         if (not self.memory_stage and self.execute_stage):
+            print('Moving from execute to memory operation')
             if not self.memory_control: # since memory operation can stall, if control register is empty, move it up
                 self.memory_control = self.execute_store
                 self.execute_store = None
@@ -532,12 +533,14 @@ class CPU:
 
         # move from decode to control registers/execute stage
         if (not self.execute_store and not self.execute_stage and self.decode_stage):
+            print('Moving from decode to execute')
             self.execute_stage = self.execute()
             self.execute_store = self.decode_stage
             self.decode_stage = None
 
         # move from fetch to decode stage
         if (not self.decode_stage and self.fetch_stage):
+            print('Moving from fetch to decode')
             self.decode_stage = self.decode()
             self.fetch_stage = None
         

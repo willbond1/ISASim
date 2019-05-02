@@ -252,6 +252,4 @@ class Assembler:
         if instruction["instruction_code"] == 0b00:
             return self.assemble_alu(command, instruction)
 
-
-
-Assembler("matrix_multiply.txt")
+Assembler("assembly_program.txt")
