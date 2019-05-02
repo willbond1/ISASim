@@ -74,13 +74,15 @@ class Assembler:
     def __init__(self, file):
         self.symbol_table = {}
         self.file = file
-        self.outfile = open("program.txt", "w")
-        self.outfile_bits = open("program_bits.txt", "w")
+        self.outfile = open("program.bin.txt", "w")
+        self.outfile_bits = open("program.bits.txt", "w")
         self.machine_lines = []
         self.machine_lines_bit = []
         for line in open(file, "r"):
-            self.machine_lines += [str(self.assemble(line)) + " "]
-            self.machine_lines_bit += [str(bin(self.assemble(line))) + " "]
+            if line is "\n":
+                continue
+            self.machine_lines += [str(self.assemble(line)) + '\n']
+            self.machine_lines_bit += [str(bin(self.assemble(line))) + " " + line + '\n']
 
         self.outfile.writelines(self.machine_lines)
         self.outfile_bits.writelines(self.machine_lines_bit)
@@ -103,7 +105,7 @@ class Assembler:
         machine_code |= instruction["opcode"] << 24
         if instruction["opcode"] == 0b10:
             machine_code |= link << 24
-            machine_code |= (int(arg) & 0xffffff)
+            machine_code |= (int(arg[1:]) & 0xffffff)
         elif instruction["opcode"] == 0b01:
             machine_code |= link << 23
             machine_code |= self.register_map[arg]
@@ -182,7 +184,8 @@ class Assembler:
         test_regex = re.compile("(CMP|CMN|TSQ|TST)(\w\w)?\s+(R\d\d?)\s*,\s*(\S.+)\Z")
         areth_regex = re.compile("(AND|EOR|SUB|RSB|ADD|ADC|SBC|RSC|ORR|BIC)(\w{2})?(S)?\s+(R\d\d?)\s*,\s*(R\d\d?)\s*,\s*(\S.+)\Z")
         machine_code = 0
-        machine_code |= instruction["instruction_code"] << 21
+        machine_code |= instruction["instruction_code"] << 26
+        machine_code |= instruction["opcode"] << 21
         op2 = 0
         if mov_regex.match(command):
             tokenized = mov_regex.findall(command)[0]
@@ -251,4 +254,4 @@ class Assembler:
 
 
 
-Assembler("assembly_program.txt")
+Assembler("matrix_multiply.txt")

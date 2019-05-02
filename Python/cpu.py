@@ -501,6 +501,7 @@ class CPU:
 
     # step pipeline
     def step(self, with_cache, with_pipe):
+        print(self.registers[PC])
         active_memory = self.memory
         if not with_cache: # get reference to RAM (no next level)
             while active_memory.next_level:
