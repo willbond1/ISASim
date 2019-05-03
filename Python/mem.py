@@ -112,8 +112,8 @@ class Memory:
         self.set_n = ceil(self.line_n / ways) # number of sets
         self.index_n = ceil(log(self.set_n, 2)) # number of bits required to index sets
         self.word_n = self.line_length // CPU.word_size # words per line
-        self.offset_n = ceil(log(self.word_n, 2)) # number of bits in offset field
-        self.tag_n = (CPU.word_size * 8) - (self.offset_n + self.index_n) # number of bits in tag field
+        self.offset_n = ceil(log(self.line_length, 2)) # number of bits in offset field
+        self.tag_n = (CPU.word_size * 8) - (self.line_length + self.index_n) # number of bits in tag field
         self.sets = []
         for i in range(self.set_n):
             self.sets += [Set(self.ways, self.word_n, is_ram)] # create list of sets
@@ -133,7 +133,7 @@ class Memory:
         return ((addr & mask) >> (self.offset_n + self.index_n))
     
     def decode_offset(self, addr):
-        return (addr & (self.word_n - 1))
+        return (addr & (self.line_length - 1))
 
     def encode(self, tag, index, offset):
         addr = tag << self.index_n

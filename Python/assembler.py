@@ -252,4 +252,4 @@ class Assembler:
         if instruction["instruction_code"] == 0b00:
             return self.assemble_alu(command, instruction)
 
-Assembler("assembly_program.txt")
+Assembler("bubble_sort.txt")
