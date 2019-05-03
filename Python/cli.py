@@ -5,8 +5,8 @@ breaks = set()
 
 help = ["FL filename: load a file into memory", "LM word addr: load value into memory",
         "RM addr: read value from memory", "DM mem_level start size: view memory level",
-        "ST: Step instruction", "DC: Display CPU", "BR addr: add a breakpoint at addr",
-        "CM addr: run until addr", "HELP: display help again", "EXIT: exit"]
+        "ST [C/P] [C/P]: Step instruction with cache and/or/nor pipe", "DC: Display CPU", "BR addr: add a breakpoint at addr",
+        "CM addr [C/P] [C/P]: run until addr with cache and/or/nor pipe", "HELP: display help again", "EXIT: exit"]
 for line in help:
     print(line)
 input_string = input('> ')
@@ -38,18 +38,41 @@ while input_string != "exit":
                 mem_level = mem_level.next_level
         mem_level.display(int(input_string[2]), int(input_string[3]))
     elif input_string[0] == "ST":
-        sim.processor.step(True, True)
+        cache = False
+        pipe = False
+        if len(input_string) > 1:
+            if input_string[1] == "C":
+                cache = True
+            elif input_string[1] == "P":
+                pipe = True
+        if len(input_string) > 2:
+            if input_string[2] == "C":
+                cache = True
+            elif input_string[2] == "P":
+                pipe = True
+        sim.processor.step(cache, pipe)
     elif input_string[0] == "DC":
         sim.processor.display_cpu()
     elif input_string[0] == "BR":
         breaks.add(int(input_string[1]))
     elif input_string[0] == "CM":
         curr_pc = sim.processor.registers[15]
+        cache = False
+        pipe = False
+        if len(input_string) > 2:
+            if input_string[2] == "C":
+                cache = True
+            elif input_string[2] == "P":
+                pipe = True
+        if len(input_string) > 3:
+            if input_string[3] == "C":
+                cache = True
+            elif input_string[3] == "P":
+                pipe = True
         while curr_pc == sim.processor.registers[15]:
-            sim.processor.step(True, True)
-        breaks.add(int(input_string[1]))
-        while sim.processor.registers[15] not in breaks:
-            sim.processor.step(True, True)
+            sim.processor.step(cache, pipe)
+        while sim.processor.registers[15] not in breaks and sim.processor.registers[15] != int(input_string[1]):
+            sim.processor.step(cache, pipe)
     elif input_string[0] == "DB":
         print([i for i in breaks])
     elif input_string[0] == "RB":
