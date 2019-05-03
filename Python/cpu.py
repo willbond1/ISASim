@@ -27,6 +27,7 @@ class CPU:
 
         self.memory_fetching = False
         self.memory_accessing = False # to ensure only one step can access memory at a time
+        self.instruction_in_pipe = False # for use when pipeline disabled
 
         self.clock = 0
         self.memory = None
@@ -510,13 +511,12 @@ class CPU:
         self.writeback_control = None
 
         # move from memory to writeback stage, checking to see if pipeline is blocked
-        wrote_back = False
         if (self.writeback_stage == None and self.writeback_control == None and self.memory_stage != None and self.memory_control != None):
             self.writeback_control = self.memory_control
             self.writeback_stage = self.writeback()
-            wrote_back = True
             self.memory_control = None
             self.memory_stage = None
+            self.instruction_in_pipe = False # instruction has completed (exited) pipeline
 
         # move from execute to memory stage
         if (self.memory_stage == None and self.execute_stage != None and self.execute_store != None):
@@ -541,10 +541,11 @@ class CPU:
             self.fetch_stage = None
         
         # move instruction from memory to fetch stage
-        if (with_pipe or wrote_back):
+        if (with_pipe or not self.instruction_in_pipe):
             next_inst = self.fetch(active_memory)
             if next_inst != None:
                 self.fetch_stage = next_inst
+                self.instruction_in_pipe = True # instruction has entered pipeline
         
         self.clock += 1
         return True
